@@ -35,9 +35,9 @@ async function scrapeResults(source, options = {}) {
   console.log(`Starting scrape for ${source} with options:`, options);
   
   try {
-    // Create an instance of the scraper class
-    const ScraperClass = scrapers[source];
-    const scraperInstance = new ScraperClass();
+    // Get the scraper instance (already instantiated) or create one if it's a class
+    const scraperModule = scrapers[source];
+    const scraperInstance = typeof scraperModule === 'function' ? new scraperModule() : scraperModule;
     
     const results = await scraperInstance.scrape(options);
     console.log(`Completed scrape for ${source}, found ${results.length} results`);
