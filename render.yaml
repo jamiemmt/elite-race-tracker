@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: elite-race-tracker-web
+    env: node
+    buildCommand: npm install && npm run install-client && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: PORT
+        value: 5001
+
+  - type: cron
+    name: elite-race-tracker-scraper
+    env: node
+    schedule: "0 0 * * *"
+    buildCommand: npm install
+    startCommand: node server/scripts/run-scrapers.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false

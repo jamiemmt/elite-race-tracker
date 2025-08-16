@@ -1,0 +1,24 @@
+[
+  {
+    "athlete": {
+      "name": "Mock Elite Runner",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023",
+      "date": "2023-04-17T00:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Mixed",
+      "isElite": true
+    },
+    "result": {
+      "time": 7200,
+      "position": 1,
+      "formattedTime": "2:00:00"
+    }
+  }
+]
