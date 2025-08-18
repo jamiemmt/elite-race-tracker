@@ -1,15 +1,78 @@
 /**
  * Scraper for Boston Marathon race results
  * Handles elite results from the Boston Athletic Association (BAA) website
+ * Uses Puppeteer for JavaScript-rendered content
  */
 
 const BaseScraper = require('../BaseScraper');
+const puppeteer = require('puppeteer');
 
 class BostonMarathonScraper extends BaseScraper {
   constructor() {
     super('bostonmarathon', 'https://www.baa.org');
     this.resultsBaseUrl = '/races/boston-marathon/results';
     this.alternateBaseUrl = 'https://results.baa.org';
+    this.browser = null;
+    this.headless = true;
+  }
+
+  /**
+   * Initialize puppeteer browser instance
+   * @returns {Promise<void>}
+   */
+  async initBrowser() {
+    if (!this.browser) {
+      console.log('Initializing Puppeteer browser...');
+      this.browser = await puppeteer.launch({
+        headless: this.headless ? 'new' : false,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+    }
+  }
+
+  /**
+   * Close puppeteer browser instance
+   * @returns {Promise<void>}
+   */
+  async closeBrowser() {
+    if (this.browser) {
+      console.log('Closing Puppeteer browser...');
+      await this.browser.close();
+      this.browser = null;
+    }
+  }
+
+  /**
+   * Fetch HTML content using Puppeteer to render JavaScript
+   * @param {string} url - URL to fetch
+   * @returns {Promise<string>} - HTML content
+   */
+  async fetchWithPuppeteer(url) {
+    try {
+      await this.initBrowser();
+      const page = await this.browser.newPage();
+      
+      // Set reasonable viewport
+      await page.setViewport({ width: 1280, height: 800 });
+      
+      console.log(`Navigating to ${url} with Puppeteer...`);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      
+      // Wait for any dynamic content to load
+      await page.waitForTimeout(2000);
+      
+      // Get the rendered HTML
+      const content = await page.content();
+      console.log(`Successfully fetched page with Puppeteer: ${url}`);
+      
+      // Close the page to conserve resources
+      await page.close();
+      
+      return content;
+    } catch (error) {
+      console.error(`Error fetching with Puppeteer: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
@@ -23,8 +86,13 @@ class BostonMarathonScraper extends BaseScraper {
       // Try the main results page first
       let html;
       try {
-        html = await this.fetchHtml('/races/boston-marathon/results');
+        // Try with Puppeteer first
+        html = await this.fetchWithPuppeteer(this.baseUrl + '/races/boston-marathon/results');
       } catch (error) {
+        console.log('Puppeteer fetch failed, falling back to regular fetch...');
+        try {
+          html = await this.fetchHtml('/races/boston-marathon/results');
+        } catch (fetchError) {
         console.log('Main results page not found, trying alternative URLs...');
         // Try alternative URL structures
         const alternativeUrls = [
@@ -35,16 +103,25 @@ class BostonMarathonScraper extends BaseScraper {
         
         for (const url of alternativeUrls) {
           try {
-            html = await this.fetchHtml(url);
-            console.log(`Successfully accessed: ${url}`);
+            // Try with Puppeteer first
+            html = await this.fetchWithPuppeteer(this.baseUrl + url);
+            console.log(`Successfully accessed with Puppeteer: ${url}`);
             break;
-          } catch (altError) {
-            console.log(`Failed to access: ${url}`);
+          } catch (puppeteerError) {
+            console.log(`Failed Puppeteer access for ${url}, trying regular fetch...`);
+            try {
+              html = await this.fetchHtml(url);
+              console.log(`Successfully accessed with regular fetch: ${url}`);
+              break;
+            } catch (altError) {
+              console.log(`Failed to access: ${url}`);
+            }
           }
         }
         
         if (!html) {
           throw new Error('Could not access any results pages');
+        }
         }
       }
       
@@ -137,17 +214,14 @@ class BostonMarathonScraper extends BaseScraper {
         `${this.alternateBaseUrl}/${year}/?pid=leaderboard&pidp=leaderboard`
       ];
       
-      // Use axios directly since our fetchHtml method assumes a path relative to baseUrl
-      const axios = require('axios');
-      
+      // Try with Puppeteer for dynamic content
       for (const alternateUrl of alternativeUrls) {
         try {
-          console.log(`Trying alternative URL format: ${alternateUrl}`);
-          const response = await axios.get(alternateUrl);
+          console.log(`Trying alternative URL format with Puppeteer: ${alternateUrl}`);
+          html = await this.fetchWithPuppeteer(alternateUrl);
           
-          if (response && response.data) {
-            console.log(`Successfully accessed alternative results URL: ${alternateUrl}`);
-            html = response.data;
+          if (html) {
+            console.log(`Successfully accessed alternative results URL with Puppeteer: ${alternateUrl}`);
             const $ = this.parseHtml(html);
             
             // Parse race date from the page
@@ -157,7 +231,10 @@ class BostonMarathonScraper extends BaseScraper {
             const results = this.parseAlternativeResultsFormat($, raceDate, resultYear);
             if (results && results.length > 0) {
               console.log(`Found ${results.length} results from alternative URL format`);
-              return results;
+              // Close browser to clean up resources
+      await this.closeBrowser();
+      
+      return results;
             }
           }
         } catch (error) {
@@ -177,8 +254,8 @@ class BostonMarathonScraper extends BaseScraper {
       // Try each URL
       for (const url of possibleUrls) {
         try {
-          console.log(`Trying URL: ${url}`);
-          const html = await this.fetchHtml(url);
+          console.log(`Trying URL with Puppeteer: ${url}`);
+          const html = await this.fetchWithPuppeteer(this.baseUrl + url);
           const $ = this.parseHtml(html);
           
           // Parse race date from the page
@@ -359,7 +436,7 @@ class BostonMarathonScraper extends BaseScraper {
    * @param {number|string} year - Year of the race
    * @returns {Array} - Array of result objects
    */
-  parseLeaderboardFormat($, raceDate, year) {
+  async parseLeaderboardFormat($, raceDate, year) {
     console.log('Attempting to parse leaderboard format...');
     const results = [];
     
@@ -401,8 +478,88 @@ class BostonMarathonScraper extends BaseScraper {
       // If we found an API endpoint, try to fetch data directly
       if (apiEndpoint) {
         console.log(`Attempting to fetch data from API endpoint: ${apiEndpoint}`);
-        // Note: We would need to make an async request here, but this would require restructuring the code
-        // For now, just log that we found an endpoint but can't use it in this sync function
+        try {
+          // Use puppeteer to extract data from the API
+          await this.initBrowser();
+          const page = await this.browser.newPage();
+          
+          // Setup request interception
+          await page.setRequestInterception(true);
+          let apiData = null;
+          
+          page.on('request', request => {
+            if (request.url().includes(apiEndpoint)) {
+              console.log(`Intercepted request to API: ${request.url()}`);
+            }
+            request.continue();
+          });
+          
+          page.on('response', async response => {
+            if (response.url().includes(apiEndpoint)) {
+              try {
+                const responseData = await response.json();
+                console.log(`Got API response data:`, responseData);
+                apiData = responseData;
+              } catch (e) {
+                console.log(`Failed to parse API response: ${e.message}`);
+              }
+            }
+          });
+          
+          // Navigate to the page
+          await page.goto(`${this.alternateBaseUrl}/${year}/?pid=leaderboard`, { waitUntil: 'networkidle2' });
+          await page.waitForTimeout(5000); // Give enough time for API requests to complete
+          
+          // Close the page
+          await page.close();
+          
+          // Process API data if we got any
+          if (apiData) {
+            console.log(`Processing API data...`);
+            // Extract the leaderboard data from the API response
+            // The structure would depend on the actual API response format
+            if (apiData.leaderboard || apiData.results) {
+              const leaderboardData = apiData.leaderboard || apiData.results;
+              
+              // Process men's and women's divisions
+              const divisions = ['men', 'women'];
+              
+              for (const division of divisions) {
+                const divisionalData = leaderboardData[division] || [];
+                const gender = division === 'men' ? 'Male' : 'Female';
+                
+                for (const runner of divisionalData) {
+                  if (runner.name && runner.time) {
+                    results.push({
+                      athlete: {
+                        name: runner.name,
+                        country: runner.country || 'Unknown',
+                        gender: gender
+                      },
+                      race: {
+                        name: `Boston Marathon ${year} - ${gender}'s Division`,
+                        date: raceDate,
+                        distance: 42195,
+                        distanceUnit: 'm',
+                        location: 'Boston, MA, USA',
+                        category: 'Road',
+                        gender: gender,
+                        isElite: true
+                      },
+                      result: {
+                        time: this.convertTimeToSeconds(runner.time),
+                        position: runner.position || runner.place,
+                        formattedTime: runner.time
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`Error fetching API data: ${error.message}`);
+        }
       }
       
       // If we found embedded JSON data, try to extract results
@@ -412,6 +569,9 @@ class BostonMarathonScraper extends BaseScraper {
         // This is a placeholder for when we can examine the actual structure
       }
       
+      // Close browser to clean up resources
+      await this.closeBrowser();
+      
       return results;
     } catch (error) {
       console.log(`Error parsing leaderboard format: ${error.message}`);
@@ -419,13 +579,13 @@ class BostonMarathonScraper extends BaseScraper {
     }
   }
   
-  parseAlternativeResultsFormat($, raceDate, year) {
+  async parseAlternativeResultsFormat($, raceDate, year) {
     console.log('Parsing alternative results format...');
     const results = [];
     
     try {
       // First try to parse leaderboard format
-      const leaderboardResults = this.parseLeaderboardFormat($, raceDate, year);
+      const leaderboardResults = await this.parseLeaderboardFormat($, raceDate, year);
       if (leaderboardResults.length > 0) {
         console.log(`Found ${leaderboardResults.length} results from leaderboard format`);
         return leaderboardResults;
@@ -435,7 +595,10 @@ class BostonMarathonScraper extends BaseScraper {
       const tables = $('table.rt-results-table, table.table, table.table-striped, table.table-responsive, table.results-table, table');
       if (tables.length === 0) {
         console.log('No results tables found in alternative format');
-        return results;
+        // Close browser to clean up resources
+      await this.closeBrowser();
+      
+      return results;
       }
       
       console.log(`Found ${tables.length} result tables`);
@@ -523,9 +686,15 @@ class BostonMarathonScraper extends BaseScraper {
       });
       
       console.log(`Parsed ${results.length} results from alternative format`);
+      // Close browser to clean up resources
+      await this.closeBrowser();
+      
       return results;
     } catch (error) {
       console.error('Error parsing alternative results format:', error);
+      // Close browser to clean up resources
+      await this.closeBrowser();
+      
       return results;
     }
   }
@@ -537,7 +706,7 @@ class BostonMarathonScraper extends BaseScraper {
    * @param {Date} raceDate - Date of the race
    * @returns {Array} - Array of result objects
    */
-  parseEliteCategory($, gender, raceDate) {
+  async parseEliteCategory($, gender, raceDate) {
     const results = [];
     const genderMapping = {
       'Men': 'Male',
@@ -549,6 +718,9 @@ class BostonMarathonScraper extends BaseScraper {
     
     if ($section.length === 0) {
       console.warn(`No results section found for ${gender}`);
+      // Close browser to clean up resources
+      await this.closeBrowser();
+      
       return results;
     }
     
@@ -716,6 +888,197 @@ class BostonMarathonScraper extends BaseScraper {
     return results;
   }
   
+  /**
+   * Extract data from JavaScript rendered tables using Puppeteer
+   * @param {string} url - URL to scrape
+   * @param {number} year - Year of the race
+   * @returns {Promise<Array>} - Array of result objects
+   */
+  async extractDynamicTableData(url, year) {
+    console.log(`Extracting dynamic table data from ${url}...`);
+    try {
+      await this.initBrowser();
+      const page = await this.browser.newPage();
+      
+      console.log(`Navigating to ${url}...`);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      
+      // Wait for tables to load
+      await page.waitForTimeout(3000);
+      
+      // Check if there are tabs for Men/Women results
+      const menWomenTabs = await page.evaluate(() => {
+        const tabs = Array.from(document.querySelectorAll('a[href*="men"], a[href*="women"], button:contains("Men"), button:contains("Women")'));
+        return tabs.map(tab => ({
+          text: tab.innerText.trim(),
+          isMen: tab.innerText.toLowerCase().includes('men'),
+          isWomen: tab.innerText.toLowerCase().includes('women')
+        }));
+      });
+      
+      const results = [];
+      const raceDate = new Date(`April 15, ${year}`);
+      
+      // If we have separate tabs for men/women, click on each
+      if (menWomenTabs.length > 0) {
+        console.log(`Found ${menWomenTabs.length} gender tabs on the page`);  
+        
+        for (const tabInfo of menWomenTabs) {
+          try {
+            // Click the tab
+            await page.evaluate((tabText) => {
+              const elements = Array.from(document.querySelectorAll('a, button'));
+              const element = elements.find(el => el.innerText.includes(tabText));
+              if (element) element.click();
+            }, tabInfo.text);
+            
+            // Wait for content to load
+            await page.waitForTimeout(2000);
+            
+            // Extract the table data for this gender
+            const gender = tabInfo.isMen ? 'Male' : 'Female';
+            
+            // Get table data using browser context
+            const tableData = await page.evaluate((gender) => {
+              const tables = Array.from(document.querySelectorAll('table'));
+              const data = [];
+              
+              for (const table of tables) {
+                const rows = Array.from(table.querySelectorAll('tbody tr'));
+                
+                for (const row of rows) {
+                  const cells = Array.from(row.querySelectorAll('td'));
+                  if (cells.length >= 3) {
+                    const position = cells[0]?.innerText.trim();
+                    const name = cells[1]?.innerText.trim();
+                    const country = cells.length >= 4 ? cells[2]?.innerText.trim() : 'Unknown';
+                    const time = cells[cells.length - 1]?.innerText.trim();
+                    
+                    if (position && name && time && /^\d+$/.test(position)) {
+                      data.push({ position, name, country, time, gender });
+                    }
+                  }
+                }
+              }
+              
+              return data;
+            }, gender);
+            
+            console.log(`Extracted ${tableData.length} results for ${gender}`);
+            
+            // Process the table data
+            for (const runner of tableData) {
+              const timeInSeconds = this.convertTimeToSeconds(runner.time);
+              
+              if (runner.name && timeInSeconds > 0) {
+                results.push({
+                  athlete: {
+                    name: runner.name,
+                    country: runner.country,
+                    gender: runner.gender
+                  },
+                  race: {
+                    name: `Boston Marathon ${year} - ${runner.gender}'s Division`,
+                    date: raceDate,
+                    distance: 42195,
+                    distanceUnit: 'm',
+                    location: 'Boston, MA, USA',
+                    category: 'Road',
+                    gender: runner.gender,
+                    isElite: true
+                  },
+                  result: {
+                    time: timeInSeconds,
+                    position: parseInt(runner.position) || null,
+                    formattedTime: runner.time
+                  }
+                });
+              }
+            }
+          } catch (error) {
+            console.log(`Error processing ${tabInfo.isMen ? 'Men' : 'Women'} tab: ${error.message}`);
+          }
+        }
+      } else {
+        // No tabs, just extract all tables on the page
+        const tableData = await page.evaluate(() => {
+          const tables = Array.from(document.querySelectorAll('table'));
+          const data = [];
+          
+          for (const table of tables) {
+            // Try to determine gender from table context
+            const tableContext = table.closest('div[id*="men"], div[id*="women"], div[class*="men"], div[class*="women"]');
+            const headerText = table.querySelector('thead')?.innerText.toLowerCase() || '';
+            
+            let gender = 'Mixed';
+            if (tableContext?.id?.includes('men') || tableContext?.className?.includes('men') || headerText.includes('men')) {
+              gender = 'Male';
+            } else if (tableContext?.id?.includes('women') || tableContext?.className?.includes('women') || headerText.includes('women')) {
+              gender = 'Female';
+            }
+            
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            
+            for (const row of rows) {
+              const cells = Array.from(row.querySelectorAll('td'));
+              if (cells.length >= 3) {
+                const position = cells[0]?.innerText.trim();
+                const name = cells[1]?.innerText.trim();
+                const country = cells.length >= 4 ? cells[2]?.innerText.trim() : 'Unknown';
+                const time = cells[cells.length - 1]?.innerText.trim();
+                
+                if (position && name && time && /^\d+$/.test(position)) {
+                  data.push({ position, name, country, time, gender });
+                }
+              }
+            }
+          }
+          
+          return data;
+        });
+        
+        console.log(`Extracted ${tableData.length} results from tables`);
+        
+        // Process the table data
+        for (const runner of tableData) {
+          const timeInSeconds = this.convertTimeToSeconds(runner.time);
+          
+          if (runner.name && timeInSeconds > 0) {
+            results.push({
+              athlete: {
+                name: runner.name,
+                country: runner.country,
+                gender: runner.gender
+              },
+              race: {
+                name: `Boston Marathon ${year} - ${runner.gender}'s Division`,
+                date: raceDate,
+                distance: 42195,
+                distanceUnit: 'm',
+                location: 'Boston, MA, USA',
+                category: 'Road',
+                gender: runner.gender,
+                isElite: true
+              },
+              result: {
+                time: timeInSeconds,
+                position: parseInt(runner.position) || null,
+                formattedTime: runner.time
+              }
+            });
+          }
+        }
+      }
+      
+      await page.close();
+      return results;
+      
+    } catch (error) {
+      console.error(`Error extracting dynamic table data: ${error.message}`);
+      return [];
+    }
+  }
+
   async scrape(options = {}) {
     const { year, allYears, startYear, endYear } = options;
     const results = [];
@@ -732,6 +1095,8 @@ class BostonMarathonScraper extends BaseScraper {
       }
       
       try {
+        // Initialize browser for Puppeteer
+        await this.initBrowser();
         const availableYears = await this.getAvailableYears();
         
         // Filter years based on options
@@ -766,11 +1131,37 @@ class BostonMarathonScraper extends BaseScraper {
         // Scrape results for each year
         for (const yearObj of yearsToScrape) {
           console.log(`Scraping Boston Marathon results for ${yearObj.year}`);
-          const yearResults = await this.getEliteResults(yearObj.year);
+          
+          // Try with dynamic content extraction first
+          let yearResults = [];
+          try {
+            console.log(`Attempting to extract dynamic content for ${yearObj.year}`);
+            const dynamicUrl = `${this.alternateBaseUrl}/${yearObj.year}/?pid=leaderboard`;
+            yearResults = await this.extractDynamicTableData(dynamicUrl, yearObj.year);
+            
+            if (yearResults.length === 0) {
+              // Try main BAA site
+              const mainUrl = `${this.baseUrl}${yearObj.url}`;
+              yearResults = await this.extractDynamicTableData(mainUrl, yearObj.year);
+            }
+          } catch (dynamicError) {
+            console.error(`Error extracting dynamic content: ${dynamicError.message}`);
+          }
+          
+          // If dynamic content extraction failed or returned no results, fall back to regular method
+          if (yearResults.length === 0) {
+            console.log(`Falling back to regular method for ${yearObj.year}`);
+            yearResults = await this.getEliteResults(yearObj.year);
+          }
+          
+          console.log(`Found ${yearResults.length} results for ${yearObj.year}`);
           results.push(...yearResults);
         }
         
-        return results;
+        // Close browser to clean up resources
+      await this.closeBrowser();
+      
+      return results;
       } catch (error) {
         console.error('Error getting live data:', error);
         // If live data scraping fails, fall back to sample data
@@ -780,6 +1171,8 @@ class BostonMarathonScraper extends BaseScraper {
     } catch (error) {
       console.error('Error in scrape method:', error);
       // Last resort - always return some data
+      // Close browser if it's open
+      await this.closeBrowser();
       return this.generateSampleData({ year: new Date().getFullYear(), limit: 4 });
     }
   }
