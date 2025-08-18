@@ -12,7 +12,7 @@
     "install-server": "npm install",
     "install-all": "npm run install-server && npm run install-client",
     "build": "cd client && npm run build",
-    "heroku-postbuild": "echo 'Skipping client build'"
+    "heroku-postbuild": "npm run install-client && npm run build"
   },
   "keywords": [
     "race",
@@ -32,7 +32,8 @@
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
     "node-schedule": "^2.1.1",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "puppeteer": "^24.16.2"
   },
   "devDependencies": {
     "concurrently": "^8.2.1",
