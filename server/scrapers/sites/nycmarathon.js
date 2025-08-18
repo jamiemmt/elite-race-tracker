@@ -159,4 +159,5 @@ class NYCMarathon extends BaseScraper {
   }
 }
 
-module.exports = NYCMarathon;
+// Export an instance of the class instead of the class itself
+module.exports = new NYCMarathon();

@@ -272,4 +272,5 @@ class WorldAthletics extends BaseScraper {
   }
 }
 
-module.exports = WorldAthletics;
+// Export an instance of the class instead of the class itself
+module.exports = new WorldAthletics();

@@ -141,4 +141,5 @@ class TokyoMarathon extends BaseScraper {
   }
 }
 
-module.exports = TokyoMarathon;
+// Export an instance of the class instead of the class itself
+module.exports = new TokyoMarathon();

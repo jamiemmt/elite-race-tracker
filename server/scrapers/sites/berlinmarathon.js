@@ -141,4 +141,5 @@ class BerlinMarathon extends BaseScraper {
   }
 }
 
-module.exports = BerlinMarathon;
+// Export an instance of the class instead of the class itself
+module.exports = new BerlinMarathon();

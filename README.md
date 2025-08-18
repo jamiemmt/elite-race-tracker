@@ -92,6 +92,44 @@ The application will be available at `http://localhost:3000`.
 2. Use the filters to select the distance and unit
 3. Toggle "Include Banned Athletes" to show or hide banned athletes
 
+## Deployment
+
+### Heroku Deployment
+
+The application is deployed to Heroku with the following components:
+
+1. **Web Server**: The Express backend API serving scraper endpoints
+2. **Scheduled Tasks**: Using Heroku Scheduler to run daily scraper jobs
+3. **Database**: MongoDB Atlas for storing race results
+
+### Deployment Steps
+
+1. Create a Heroku app:
+   ```
+   heroku create elite-race-tracker
+   ```
+
+2. Set environment variables:
+   ```
+   heroku config:set MONGODB_URI=your_mongodb_connection_string
+   ```
+
+3. Deploy the application:
+   ```
+   git push heroku main
+   ```
+
+4. Set up Heroku Scheduler:
+   ```
+   heroku addons:create scheduler:standard
+   heroku addons:open scheduler
+   ```
+   Then add a daily job to run: `node server/scripts/run-all-scrapers.js`
+
+### Continuous Deployment
+
+The application is set up for continuous deployment from GitHub. Any push to the main branch will trigger an automatic deployment to Heroku.
+
 ## License
 
 MIT

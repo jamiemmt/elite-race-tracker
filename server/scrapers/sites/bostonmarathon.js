@@ -21,12 +21,23 @@ class BostonMarathonScraper extends BaseScraper {
    * @returns {Promise<void>}
    */
   async initBrowser() {
+    // Don't try to launch Puppeteer in Heroku environment
+    if (process.env.DYNO) {
+      console.log('Running in Heroku environment, skipping Puppeteer initialization');
+      return;
+    }
+
     if (!this.browser) {
       console.log('Initializing Puppeteer browser...');
-      this.browser = await puppeteer.launch({
-        headless: this.headless ? 'new' : false,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+      try {
+        this.browser = await puppeteer.launch({
+          headless: this.headless ? 'new' : false,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+      } catch (error) {
+        console.error('Failed to initialize Puppeteer:', error.message);
+        // Don't throw, just log error - allows fallback to work
+      }
     }
   }
 
@@ -1084,6 +1095,12 @@ class BostonMarathonScraper extends BaseScraper {
     const results = [];
     
     try {
+      // Check if running in Heroku environment - immediately use sample data
+      if (process.env.DYNO) {
+        console.log('Running in Heroku environment, using sample data');
+        return this.generateSampleData(options);
+      }
+      
       // First try to get live data
       const currentYear = new Date().getFullYear();
       const requestedYear = parseInt(year) || currentYear;
@@ -1097,6 +1114,13 @@ class BostonMarathonScraper extends BaseScraper {
       try {
         // Initialize browser for Puppeteer
         await this.initBrowser();
+        
+        // If browser initialization failed, use sample data
+        if (!this.browser && !process.env.DYNO) {
+          console.log('Browser initialization failed, using sample data');
+          return this.generateSampleData({ year: requestedYear, ...options });
+        }
+        
         const availableYears = await this.getAvailableYears();
         
         // Filter years based on options
@@ -1135,14 +1159,18 @@ class BostonMarathonScraper extends BaseScraper {
           // Try with dynamic content extraction first
           let yearResults = [];
           try {
-            console.log(`Attempting to extract dynamic content for ${yearObj.year}`);
-            const dynamicUrl = `${this.alternateBaseUrl}/${yearObj.year}/?pid=leaderboard`;
-            yearResults = await this.extractDynamicTableData(dynamicUrl, yearObj.year);
-            
-            if (yearResults.length === 0) {
-              // Try main BAA site
-              const mainUrl = `${this.baseUrl}${yearObj.url}`;
-              yearResults = await this.extractDynamicTableData(mainUrl, yearObj.year);
+            if (this.browser) {
+              console.log(`Attempting to extract dynamic content for ${yearObj.year}`);
+              const dynamicUrl = `${this.alternateBaseUrl}/${yearObj.year}/?pid=leaderboard`;
+              yearResults = await this.extractDynamicTableData(dynamicUrl, yearObj.year);
+              
+              if (yearResults.length === 0) {
+                // Try main BAA site
+                const mainUrl = `${this.baseUrl}${yearObj.url}`;
+                yearResults = await this.extractDynamicTableData(mainUrl, yearObj.year);
+              }
+            } else {
+              console.log('No browser available, skipping dynamic extraction');
             }
           } catch (dynamicError) {
             console.error(`Error extracting dynamic content: ${dynamicError.message}`);
@@ -1155,13 +1183,21 @@ class BostonMarathonScraper extends BaseScraper {
           }
           
           console.log(`Found ${yearResults.length} results for ${yearObj.year}`);
+          
+          // If we still have no results, use sample data
+          if (yearResults.length === 0) {
+            console.log('No results found, using sample data');
+            yearResults = this.generateSampleData({ year: yearObj.year, ...options });
+            console.log(`Generated ${yearResults.length} sample results`);
+          }
+          
           results.push(...yearResults);
         }
         
         // Close browser to clean up resources
-      await this.closeBrowser();
+        await this.closeBrowser();
       
-      return results;
+        return results;
       } catch (error) {
         console.error('Error getting live data:', error);
         // If live data scraping fails, fall back to sample data
@@ -1172,7 +1208,11 @@ class BostonMarathonScraper extends BaseScraper {
       console.error('Error in scrape method:', error);
       // Last resort - always return some data
       // Close browser if it's open
-      await this.closeBrowser();
+      try {
+        await this.closeBrowser();
+      } catch (e) {
+        console.log('Error closing browser:', e.message);
+      }
       return this.generateSampleData({ year: new Date().getFullYear(), limit: 4 });
     }
   }

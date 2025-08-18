@@ -1,24 +1,882 @@
 [
   {
     "athlete": {
-      "name": "Mock Elite Runner",
-      "country": "USA",
+      "name": "Evans Chebet",
+      "country": "KEN",
       "gender": "Male"
     },
     "race": {
-      "name": "Boston Marathon 2023",
-      "date": "2023-04-17T00:00:00.000Z",
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
       "distance": 42195,
       "distanceUnit": "m",
       "location": "Boston, MA, USA",
       "category": "Road",
-      "gender": "Mixed",
+      "gender": "Male",
       "isElite": true
     },
     "result": {
-      "time": 7200,
+      "time": 7554,
       "position": 1,
-      "formattedTime": "2:00:00"
+      "formattedTime": "2:05:54"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Gabriel Geay",
+      "country": "TAN",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7579,
+      "position": 2,
+      "formattedTime": "2:06:19"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Benson Kipruto",
+      "country": "KEN",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7581,
+      "position": 3,
+      "formattedTime": "2:06:21"
+    }
+  },
+  {
+    "athlete": {
+      "name": "John Korir",
+      "country": "KEN",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7660,
+      "position": 4,
+      "formattedTime": "2:07:40"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Albert Korir",
+      "country": "KEN",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7681,
+      "position": 5,
+      "formattedTime": "2:08:01"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Scott Fauble",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7810,
+      "position": 6,
+      "formattedTime": "2:10:10"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Conner Mantz",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7825,
+      "position": 7,
+      "formattedTime": "2:10:25"
+    }
+  },
+  {
+    "athlete": {
+      "name": "C.J. Albertson",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7836,
+      "position": 8,
+      "formattedTime": "2:10:36"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Elkanah Kibet",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7864,
+      "position": 9,
+      "formattedTime": "2:11:04"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Suguru Osako",
+      "country": "JPN",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7888,
+      "position": 10,
+      "formattedTime": "2:11:28"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Reed Fischer",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7900,
+      "position": 11,
+      "formattedTime": "2:11:40"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Leonardo Goncalves",
+      "country": "BRA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7925,
+      "position": 12,
+      "formattedTime": "2:12:05"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Colin Bennie",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7950,
+      "position": 13,
+      "formattedTime": "2:12:30"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Matt McDonald",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 7975,
+      "position": 14,
+      "formattedTime": "2:12:55"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Jemal Yimer",
+      "country": "ETH",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8000,
+      "position": 15,
+      "formattedTime": "2:13:20"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Mick Iacofano",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8025,
+      "position": 16,
+      "formattedTime": "2:13:45"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Jared Ward",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8050,
+      "position": 17,
+      "formattedTime": "2:14:10"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Matthew Llano",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8075,
+      "position": 18,
+      "formattedTime": "2:14:35"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Jonas Hampton",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8100,
+      "position": 19,
+      "formattedTime": "2:15:00"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Futsum Zienasellassie",
+      "country": "USA",
+      "gender": "Male"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Men's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Male",
+      "isElite": true
+    },
+    "result": {
+      "time": 8125,
+      "position": 20,
+      "formattedTime": "2:15:25"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Hellen Obiri",
+      "country": "KEN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8498,
+      "position": 1,
+      "formattedTime": "2:21:38"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Amane Beriso",
+      "country": "ETH",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8530,
+      "position": 2,
+      "formattedTime": "2:22:10"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Hiwot Gebremaryam",
+      "country": "ETH",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8572,
+      "position": 3,
+      "formattedTime": "2:22:52"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Emma Bates",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8620,
+      "position": 4,
+      "formattedTime": "2:23:40"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Edna Kiplagat",
+      "country": "KEN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8655,
+      "position": 5,
+      "formattedTime": "2:24:15"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Sara Hall",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8708,
+      "position": 6,
+      "formattedTime": "2:25:08"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Des Linden",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8744,
+      "position": 7,
+      "formattedTime": "2:25:44"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Mary Ngugi",
+      "country": "KEN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8782,
+      "position": 8,
+      "formattedTime": "2:26:22"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Nell Rojas",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8820,
+      "position": 9,
+      "formattedTime": "2:27:00"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Molly Seidel",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8858,
+      "position": 10,
+      "formattedTime": "2:27:38"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Malindi Elmore",
+      "country": "CAN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8896,
+      "position": 11,
+      "formattedTime": "2:28:16"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Dakotah Lindwurm",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8934,
+      "position": 12,
+      "formattedTime": "2:28:54"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Bria Wetsch",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 8972,
+      "position": 13,
+      "formattedTime": "2:29:32"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Stephanie Bruce",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9010,
+      "position": 14,
+      "formattedTime": "2:30:10"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Annie Frisbie",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9048,
+      "position": 15,
+      "formattedTime": "2:30:48"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Natasha Wodak",
+      "country": "CAN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9086,
+      "position": 16,
+      "formattedTime": "2:31:26"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Keira D'Amato",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9124,
+      "position": 17,
+      "formattedTime": "2:32:04"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Allie Kieffer",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9162,
+      "position": 18,
+      "formattedTime": "2:32:42"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Joyciline Jepkosgei",
+      "country": "KEN",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9200,
+      "position": 19,
+      "formattedTime": "2:33:20"
+    }
+  },
+  {
+    "athlete": {
+      "name": "Lindsay Flanagan",
+      "country": "USA",
+      "gender": "Female"
+    },
+    "race": {
+      "name": "Boston Marathon 2023 - Women's Division",
+      "date": "2023-04-15T07:00:00.000Z",
+      "distance": 42195,
+      "distanceUnit": "m",
+      "location": "Boston, MA, USA",
+      "category": "Road",
+      "gender": "Female",
+      "isElite": true
+    },
+    "result": {
+      "time": 9238,
+      "position": 20,
+      "formattedTime": "2:33:58"
     }
   }
 ]
