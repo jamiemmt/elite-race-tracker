@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
+import { Container, Form, Button, Card, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import axios from 'axios';
