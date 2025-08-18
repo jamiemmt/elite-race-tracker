@@ -9,6 +9,7 @@ class BostonMarathonScraper extends BaseScraper {
   constructor() {
     super('bostonmarathon', 'https://www.baa.org');
     this.resultsBaseUrl = '/races/boston-marathon/results';
+    this.alternateBaseUrl = 'https://results.baa.org';
   }
 
   /**
@@ -127,6 +128,37 @@ class BostonMarathonScraper extends BaseScraper {
       // Initialize with current year if year is not provided
       const resultYear = parseInt(year) || new Date().getFullYear();
       
+      let html = null;
+      const results = [];
+      
+      // Try the alternative result URL pattern first
+      try {
+        const alternateUrl = `${this.alternateBaseUrl}/${year}/?pid=list`;
+        console.log(`Trying alternative URL format: ${alternateUrl}`);
+        
+        // Use axios directly since our fetchHtml method assumes a path relative to baseUrl
+        const axios = require('axios');
+        const response = await axios.get(alternateUrl);
+        
+        if (response && response.data) {
+          console.log('Successfully accessed alternative results URL!');
+          html = response.data;
+          const $ = this.parseHtml(html);
+          
+          // Parse race date from the page
+          const raceDate = this.parseRaceDate($, resultYear);
+          
+          // Parse the results from the alternative URL format
+          const results = this.parseAlternativeResultsFormat($, raceDate, resultYear);
+          if (results && results.length > 0) {
+            console.log(`Found ${results.length} results from alternative URL format`);
+            return results;
+          }
+        }
+      } catch (error) {
+        console.log(`Failed to access alternative URL: ${error.message}`);
+      }
+      
       // Try multiple URL patterns for Boston Marathon results
       const possibleUrls = [
         `/races/boston-marathon/results/${year}/elite`,
@@ -135,9 +167,6 @@ class BostonMarathonScraper extends BaseScraper {
         `/boston-marathon/${year}/results`,
         `/results/${year}/boston-marathon`
       ];
-      
-      let html = null;
-      const results = [];
 
       // Try each URL
       for (const url of possibleUrls) {
@@ -308,6 +337,117 @@ class BostonMarathonScraper extends BaseScraper {
     
     // If not found, use April (traditional Boston Marathon month) of the given year
     return new Date(`April 15, ${year}`);
+  }
+  
+  /**
+   * Parse results from the alternative results.baa.org format
+   * @param {CheerioAPI} $ - Cheerio API
+   * @param {Date} raceDate - Date of the race
+   * @param {number|string} year - Year of the race
+   * @returns {Array} - Array of result objects
+   */
+  parseAlternativeResultsFormat($, raceDate, year) {
+    console.log('Parsing alternative results format...');
+    const results = [];
+    
+    try {
+      // Try to find result tables - using a more general selector for the new format
+      const tables = $('table.rt-results-table, table.table, table.table-striped, table.table-responsive, table.results-table, table');
+      if (tables.length === 0) {
+        console.log('No results tables found in alternative format');
+        return results;
+      }
+      
+      console.log(`Found ${tables.length} result tables`);
+      
+      // Process each table
+      tables.each((tableIndex, tableElement) => {
+        const $table = $(tableElement);
+        
+        // Try to determine category/gender from headers or surrounding elements
+        let categoryText = '';
+        const $categoryElement = $table.prev('h2, h3, h4, .category-title, .division-header');
+        if ($categoryElement.length > 0) {
+          categoryText = $categoryElement.text().trim().toLowerCase();
+        }
+        
+        let gender = 'Mixed';
+        if (categoryText.includes('men') || categoryText.includes('male')) {
+          gender = 'Male';
+        } else if (categoryText.includes('women') || categoryText.includes('female')) {
+          gender = 'Female';
+        }
+        
+        console.log(`Processing table ${tableIndex + 1} with gender: ${gender}`);
+        
+        // Get headers to determine column positions
+        const headers = [];
+        $table.find('thead th').each((i, el) => {
+          headers.push($(el).text().trim().toLowerCase());
+        });
+        
+        // Map header positions
+        const posIdx = headers.findIndex(h => h.includes('place') || h.includes('pos'));
+        const nameIdx = headers.findIndex(h => h.includes('name'));
+        const countryIdx = headers.findIndex(h => h.includes('country') || h.includes('nat'));
+        const timeIdx = headers.findIndex(h => h.includes('time') || h.includes('finish'));
+        
+        // Process rows
+        $table.find('tbody tr').each((i, row) => {
+          const $row = $(row);
+          const cells = $row.find('td');
+          
+          if (cells.length < 3) return; // Skip rows with insufficient data
+          
+          // Extract data using determined indices
+          const position = posIdx >= 0 ? $(cells[posIdx]).text().trim() : `${i + 1}`;
+          const name = nameIdx >= 0 ? $(cells[nameIdx]).text().trim() : $(cells[0]).text().trim();
+          const country = countryIdx >= 0 ? $(cells[countryIdx]).text().trim() : 'Unknown';
+          const timeText = timeIdx >= 0 ? $(cells[timeIdx]).text().trim() : $(cells[cells.length - 1]).text().trim();
+          
+          // Skip header-like rows or rows without valid position
+          if (position.toLowerCase().includes('place') || 
+              name.toLowerCase().includes('name') ||
+              !position.match(/^\d+$/)) {
+            return;
+          }
+          
+          // Parse time
+          const timeInSeconds = this.convertTimeToSeconds(timeText);
+          
+          if (name && timeInSeconds > 0) {
+            results.push({
+              athlete: {
+                name,
+                country,
+                gender
+              },
+              race: {
+                name: `Boston Marathon ${year} - ${gender}'s Division`,
+                date: raceDate,
+                distance: 42195,
+                distanceUnit: 'm',
+                location: 'Boston, MA, USA',
+                category: 'Road',
+                gender,
+                isElite: true
+              },
+              result: {
+                time: timeInSeconds,
+                position: parseInt(position) || i + 1,
+                formattedTime: timeText
+              }
+            });
+          }
+        });
+      });
+      
+      console.log(`Parsed ${results.length} results from alternative format`);
+      return results;
+    } catch (error) {
+      console.error('Error parsing alternative results format:', error);
+      return results;
+    }
   }
 
   /**
