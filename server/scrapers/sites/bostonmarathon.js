@@ -131,32 +131,38 @@ class BostonMarathonScraper extends BaseScraper {
       let html = null;
       const results = [];
       
-      // Try the alternative result URL pattern first
-      try {
-        const alternateUrl = `${this.alternateBaseUrl}/${year}/?pid=list`;
-        console.log(`Trying alternative URL format: ${alternateUrl}`);
-        
-        // Use axios directly since our fetchHtml method assumes a path relative to baseUrl
-        const axios = require('axios');
-        const response = await axios.get(alternateUrl);
-        
-        if (response && response.data) {
-          console.log('Successfully accessed alternative results URL!');
-          html = response.data;
-          const $ = this.parseHtml(html);
+      // Try the alternative result URL patterns first
+      const alternativeUrls = [
+        `${this.alternateBaseUrl}/${year}/?pid=list`,
+        `${this.alternateBaseUrl}/${year}/?pid=leaderboard&pidp=leaderboard`
+      ];
+      
+      // Use axios directly since our fetchHtml method assumes a path relative to baseUrl
+      const axios = require('axios');
+      
+      for (const alternateUrl of alternativeUrls) {
+        try {
+          console.log(`Trying alternative URL format: ${alternateUrl}`);
+          const response = await axios.get(alternateUrl);
           
-          // Parse race date from the page
-          const raceDate = this.parseRaceDate($, resultYear);
-          
-          // Parse the results from the alternative URL format
-          const results = this.parseAlternativeResultsFormat($, raceDate, resultYear);
-          if (results && results.length > 0) {
-            console.log(`Found ${results.length} results from alternative URL format`);
-            return results;
+          if (response && response.data) {
+            console.log(`Successfully accessed alternative results URL: ${alternateUrl}`);
+            html = response.data;
+            const $ = this.parseHtml(html);
+            
+            // Parse race date from the page
+            const raceDate = this.parseRaceDate($, resultYear);
+            
+            // Parse the results from the alternative URL format
+            const results = this.parseAlternativeResultsFormat($, raceDate, resultYear);
+            if (results && results.length > 0) {
+              console.log(`Found ${results.length} results from alternative URL format`);
+              return results;
+            }
           }
+        } catch (error) {
+          console.log(`Failed to access alternative URL ${alternateUrl}: ${error.message}`);
         }
-      } catch (error) {
-        console.log(`Failed to access alternative URL: ${error.message}`);
       }
       
       // Try multiple URL patterns for Boston Marathon results
@@ -346,11 +352,85 @@ class BostonMarathonScraper extends BaseScraper {
    * @param {number|string} year - Year of the race
    * @returns {Array} - Array of result objects
    */
+  /**
+   * Parse leaderboard format from the page
+   * @param {CheerioAPI} $ - Cheerio API
+   * @param {Date} raceDate - Date of the race
+   * @param {number|string} year - Year of the race
+   * @returns {Array} - Array of result objects
+   */
+  parseLeaderboardFormat($, raceDate, year) {
+    console.log('Attempting to parse leaderboard format...');
+    const results = [];
+    
+    try {
+      // Look for script tags that might contain the data or API endpoints
+      const scripts = $('script');
+      let apiEndpoint = null;
+      let jsonData = null;
+      
+      console.log(`Found ${scripts.length} script tags`);
+      
+      // Extract potential data URLs or embedded JSON data
+      scripts.each((i, script) => {
+        const scriptContent = $(script).html() || '';
+        
+        // Look for API endpoints that might fetch leaderboard data
+        const apiUrlMatch = scriptContent.match(/['"](https?:\/\/[^"']*?\/api\/[^"']*?)['"]/);
+        if (apiUrlMatch && apiUrlMatch[1]) {
+          apiEndpoint = apiUrlMatch[1];
+          console.log(`Potential API endpoint found: ${apiEndpoint}`);
+        }
+        
+        // Look for embedded JSON data
+        const jsonMatch = scriptContent.match(/leaderboardData\s*=\s*(\{.*?\});/s) || 
+                       scriptContent.match(/results\s*=\s*(\{.*?\});/s) || 
+                       scriptContent.match(/data\s*=\s*(\{.*?\});/s);
+        
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            // This is risky and might not work, but worth a try
+            jsonData = JSON.parse(jsonMatch[1]);
+            console.log('Found embedded JSON data in script tag');
+          } catch (e) {
+            console.log(`Failed to parse JSON: ${e.message}`);
+          }
+        }
+      });
+      
+      // If we found an API endpoint, try to fetch data directly
+      if (apiEndpoint) {
+        console.log(`Attempting to fetch data from API endpoint: ${apiEndpoint}`);
+        // Note: We would need to make an async request here, but this would require restructuring the code
+        // For now, just log that we found an endpoint but can't use it in this sync function
+      }
+      
+      // If we found embedded JSON data, try to extract results
+      if (jsonData) {
+        console.log('Attempting to extract results from embedded JSON data');
+        // Parse the JSON data based on its structure (which we don't know yet)
+        // This is a placeholder for when we can examine the actual structure
+      }
+      
+      return results;
+    } catch (error) {
+      console.log(`Error parsing leaderboard format: ${error.message}`);
+      return [];
+    }
+  }
+  
   parseAlternativeResultsFormat($, raceDate, year) {
     console.log('Parsing alternative results format...');
     const results = [];
     
     try {
+      // First try to parse leaderboard format
+      const leaderboardResults = this.parseLeaderboardFormat($, raceDate, year);
+      if (leaderboardResults.length > 0) {
+        console.log(`Found ${leaderboardResults.length} results from leaderboard format`);
+        return leaderboardResults;
+      }
+      
       // Try to find result tables - using a more general selector for the new format
       const tables = $('table.rt-results-table, table.table, table.table-striped, table.table-responsive, table.results-table, table');
       if (tables.length === 0) {
