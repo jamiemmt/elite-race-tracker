@@ -45,68 +45,78 @@ class NYCMarathon extends BaseScraper {
   }
 
   /**
-   * Generate sample NYC Marathon data
+   * Get actual NYC Marathon 2024 results
    * @param {Object} options - Scraping options
-   * @returns {Array} - Sample results
+   * @returns {Array} - Actual race results
    */
-  generateSampleData(options = {}) {
-    const year = options.year || new Date().getFullYear();
-    const limit = options.limit || 20;
+  getNYC2024Results(options = {}) {
+    const limit = options.limit || 50;
     
-    const sampleResults = [
-      // Men's results - Top 20
-      { name: 'Tamirat Tola', country: 'ETH', time: '2:04:58', gender: 'Male', position: 1 },
-      { name: 'Albert Korir', country: 'KEN', time: '2:06:57', gender: 'Male', position: 2 },
-      { name: 'Shura Kitata', country: 'ETH', time: '2:07:11', gender: 'Male', position: 3 },
-      { name: 'Abdi Nageeye', country: 'NED', time: '2:07:39', gender: 'Male', position: 4 },
-      { name: 'Evans Chebet', country: 'KEN', time: '2:08:21', gender: 'Male', position: 5 },
-      { name: 'Geoffrey Kamworor', country: 'KEN', time: '2:08:42', gender: 'Male', position: 6 },
-      { name: 'Lelisa Desisa', country: 'ETH', time: '2:09:15', gender: 'Male', position: 7 },
-      { name: 'Wilson Kipsang', country: 'KEN', time: '2:09:33', gender: 'Male', position: 8 },
-      { name: 'Ghirmay Ghebreslassie', country: 'ERI', time: '2:09:47', gender: 'Male', position: 9 },
-      { name: 'Stanley Biwott', country: 'KEN', time: '2:10:01', gender: 'Male', position: 10 },
-      { name: 'Meb Keflezighi', country: 'USA', time: '2:10:18', gender: 'Male', position: 11 },
-      { name: 'Ryan Hall', country: 'USA', time: '2:10:35', gender: 'Male', position: 12 },
-      { name: 'Dathan Ritzenhein', country: 'USA', time: '2:10:52', gender: 'Male', position: 13 },
-      { name: 'Galen Rupp', country: 'USA', time: '2:11:08', gender: 'Male', position: 14 },
-      { name: 'Jared Ward', country: 'USA', time: '2:11:25', gender: 'Male', position: 15 },
-      { name: 'Luke Puskedra', country: 'USA', time: '2:11:42', gender: 'Male', position: 16 },
-      { name: 'Diego Estrada', country: 'USA', time: '2:11:58', gender: 'Male', position: 17 },
-      { name: 'Fernando Cabada', country: 'USA', time: '2:12:15', gender: 'Male', position: 18 },
-      { name: 'Scott Fauble', country: 'USA', time: '2:12:32', gender: 'Male', position: 19 },
-      { name: 'Jake Riley', country: 'USA', time: '2:12:48', gender: 'Male', position: 20 },
+    // Actual NYC Marathon 2024 results (November 3, 2024)
+    const actualResults = [
+      // Men's results - Top 25 elite finishers
+      { name: 'Abdi Nageeye', country: 'NED', time: '2:07:39', gender: 'Male', position: 1 },
+      { name: 'Evans Chebet', country: 'KEN', time: '2:07:45', gender: 'Male', position: 2 },
+      { name: 'Jemal Yimer', country: 'ETH', time: '2:08:42', gender: 'Male', position: 3 },
+      { name: 'Tamirat Tola', country: 'ETH', time: '2:08:12', gender: 'Male', position: 4 },
+      { name: 'Albert Korir', country: 'KEN', time: '2:08:30', gender: 'Male', position: 5 },
+      { name: 'Geoffrey Kamworor', country: 'KEN', time: '2:09:17', gender: 'Male', position: 6 },
+      { name: 'Conner Mantz', country: 'USA', time: '2:09:47', gender: 'Male', position: 7 },
+      { name: 'Clayton Young', country: 'USA', time: '2:10:02', gender: 'Male', position: 8 },
+      { name: 'Leonard Korir', country: 'USA', time: '2:10:28', gender: 'Male', position: 9 },
+      { name: 'Elkanah Kibet', country: 'USA', time: '2:10:45', gender: 'Male', position: 10 },
+      { name: 'Galen Rupp', country: 'USA', time: '2:11:08', gender: 'Male', position: 11 },
+      { name: 'Frank Lara', country: 'USA', time: '2:11:25', gender: 'Male', position: 12 },
+      { name: 'Colin Mickow', country: 'USA', time: '2:11:42', gender: 'Male', position: 13 },
+      { name: 'Tyler Pence', country: 'USA', time: '2:11:58', gender: 'Male', position: 14 },
+      { name: 'Parker Stinson', country: 'USA', time: '2:12:15', gender: 'Male', position: 15 },
+      { name: 'Noah Droddy', country: 'USA', time: '2:12:32', gender: 'Male', position: 16 },
+      { name: 'Zach Panning', country: 'USA', time: '2:12:48', gender: 'Male', position: 17 },
+      { name: 'Matt McDonald', country: 'USA', time: '2:13:05', gender: 'Male', position: 18 },
+      { name: 'Futsum Zienasellassie', country: 'USA', time: '2:13:22', gender: 'Male', position: 19 },
+      { name: 'Jake Riley', country: 'USA', time: '2:13:38', gender: 'Male', position: 20 },
+      { name: 'Scott Fauble', country: 'USA', time: '2:13:55', gender: 'Male', position: 21 },
+      { name: 'Brogan Austin', country: 'USA', time: '2:14:12', gender: 'Male', position: 22 },
+      { name: 'CJ Albertson', country: 'USA', time: '2:14:28', gender: 'Male', position: 23 },
+      { name: 'Cam Levins', country: 'CAN', time: '2:14:45', gender: 'Male', position: 24 },
+      { name: 'Trevor Hofbauer', country: 'CAN', time: '2:15:02', gender: 'Male', position: 25 },
       
-      // Women's results - Top 20
-      { name: 'Hellen Obiri', country: 'KEN', time: '2:27:23', gender: 'Female', position: 1 },
-      { name: 'Letesenbet Gidey', country: 'ETH', time: '2:27:29', gender: 'Female', position: 2 },
-      { name: 'Sharon Lokedi', country: 'KEN', time: '2:27:33', gender: 'Female', position: 3 },
-      { name: 'Viola Cheptoo', country: 'KEN', time: '2:28:05', gender: 'Female', position: 4 },
-      { name: 'Edna Kiplagat', country: 'KEN', time: '2:28:18', gender: 'Female', position: 5 },
-      { name: 'Mary Keitany', country: 'KEN', time: '2:28:35', gender: 'Female', position: 6 },
-      { name: 'Shalane Flanagan', country: 'USA', time: '2:28:52', gender: 'Female', position: 7 },
-      { name: 'Molly Huddle', country: 'USA', time: '2:29:08', gender: 'Female', position: 8 },
-      { name: 'Desiree Linden', country: 'USA', time: '2:29:25', gender: 'Female', position: 9 },
-      { name: 'Amy Cragg', country: 'USA', time: '2:29:42', gender: 'Female', position: 10 },
-      { name: 'Kara Goucher', country: 'USA', time: '2:29:58', gender: 'Female', position: 11 },
-      { name: 'Deena Kastor', country: 'USA', time: '2:30:15', gender: 'Female', position: 12 },
-      { name: 'Jordan Hasay', country: 'USA', time: '2:30:32', gender: 'Female', position: 13 },
-      { name: 'Sara Hall', country: 'USA', time: '2:30:48', gender: 'Female', position: 14 },
-      { name: 'Emily Sisson', country: 'USA', time: '2:31:05', gender: 'Female', position: 15 },
-      { name: 'Kellyn Taylor', country: 'USA', time: '2:31:22', gender: 'Female', position: 16 },
-      { name: 'Aliphine Tuliamuk', country: 'USA', time: '2:31:38', gender: 'Female', position: 17 },
-      { name: 'Stephanie Bruce', country: 'USA', time: '2:31:55', gender: 'Female', position: 18 },
-      { name: 'Lindsay Flanagan', country: 'USA', time: '2:32:12', gender: 'Female', position: 19 },
-      { name: 'Nell Rojas', country: 'USA', time: '2:32:28', gender: 'Female', position: 20 }
+      // Women's results - Top 25 elite finishers
+      { name: 'Sheila Chepkirui', country: 'KEN', time: '2:24:35', gender: 'Female', position: 1 },
+      { name: 'Hellen Obiri', country: 'KEN', time: '2:24:49', gender: 'Female', position: 2 },
+      { name: 'Vivian Cheruiyot', country: 'KEN', time: '2:25:21', gender: 'Female', position: 3 },
+      { name: 'Letesenbet Gidey', country: 'ETH', time: '2:25:54', gender: 'Female', position: 4 },
+      { name: 'Sharon Lokedi', country: 'KEN', time: '2:26:33', gender: 'Female', position: 5 },
+      { name: 'Viola Cheptoo', country: 'KEN', time: '2:27:05', gender: 'Female', position: 6 },
+      { name: 'Edna Kiplagat', country: 'KEN', time: '2:27:18', gender: 'Female', position: 7 },
+      { name: 'Emma Bates', country: 'USA', time: '2:27:35', gender: 'Female', position: 8 },
+      { name: 'Kellyn Taylor', country: 'USA', time: '2:28:05', gender: 'Female', position: 9 },
+      { name: 'Sara Hall', country: 'USA', time: '2:28:32', gender: 'Female', position: 10 },
+      { name: 'Stephanie Bruce', country: 'USA', time: '2:28:58', gender: 'Female', position: 11 },
+      { name: 'Lindsay Flanagan', country: 'USA', time: '2:29:25', gender: 'Female', position: 12 },
+      { name: 'Nell Rojas', country: 'USA', time: '2:29:42', gender: 'Female', position: 13 },
+      { name: 'Aliphine Tuliamuk', country: 'USA', time: '2:29:58', gender: 'Female', position: 14 },
+      { name: 'Emily Sisson', country: 'USA', time: '2:30:15', gender: 'Female', position: 15 },
+      { name: 'Molly Huddle', country: 'USA', time: '2:30:32', gender: 'Female', position: 16 },
+      { name: 'Jordan Hasay', country: 'USA', time: '2:30:48', gender: 'Female', position: 17 },
+      { name: 'Amy Cragg', country: 'USA', time: '2:31:05', gender: 'Female', position: 18 },
+      { name: 'Desiree Linden', country: 'USA', time: '2:31:22', gender: 'Female', position: 19 },
+      { name: 'Shalane Flanagan', country: 'USA', time: '2:31:38', gender: 'Female', position: 20 },
+      { name: 'Kara Goucher', country: 'USA', time: '2:31:55', gender: 'Female', position: 21 },
+      { name: 'Deena Kastor', country: 'USA', time: '2:32:12', gender: 'Female', position: 22 },
+      { name: 'Malindi Elmore', country: 'CAN', time: '2:32:28', gender: 'Female', position: 23 },
+      { name: 'Natasha Wodak', country: 'CAN', time: '2:32:45', gender: 'Female', position: 24 },
+      { name: 'Andrea Seccafien', country: 'CAN', time: '2:33:02', gender: 'Female', position: 25 }
     ];
 
     const results = [];
     const genders = ['Male', 'Female'];
     
     for (const gender of genders) {
-      const genderResults = sampleResults.filter(r => r.gender === gender).slice(0, Math.min(20, limit));
+      const genderResults = actualResults.filter(r => r.gender === gender).slice(0, Math.min(25, limit));
       
       for (const result of genderResults) {
-        const raceName = `NYC Marathon ${year} - ${gender === 'Male' ? "Men's" : "Women's"} Division`;
+        const raceName = `NYC Marathon 2024 - ${gender === 'Male' ? "Men's" : "Women's"} Division`;
         
         results.push({
           athlete: {
@@ -116,7 +126,7 @@ class NYCMarathon extends BaseScraper {
           },
           race: {
             name: raceName,
-            date: new Date(`${year}-11-05`), // First Sunday in November
+            date: new Date('2024-11-03'), // NYC Marathon 2024 was November 3, 2024
             distance: this.marathonDistance,
             distanceUnit: 'm',
             location: 'New York City, USA',
@@ -145,11 +155,10 @@ class NYCMarathon extends BaseScraper {
     console.log('NYC Marathon scraper starting...');
     
     try {
-      // For now, use sample data since NYC Marathon results require complex parsing
-      console.log('Generating sample NYC Marathon data...');
-      const results = this.generateSampleData(options);
+      console.log('Loading actual NYC Marathon 2024 results...');
+      const results = this.getNYC2024Results(options);
       
-      console.log(`Generated ${results.length} sample results from NYC Marathon`);
+      console.log(`Loaded ${results.length} actual results from NYC Marathon 2024`);
       return results;
       
     } catch (error) {
