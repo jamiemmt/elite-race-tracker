@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const scraperRoutes = require('./routes/scraperRoutes');
+const racesRoutes = require('./routes/races');
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +71,7 @@ if (process.env.MONGODB_URI) {
 
 // API Routes
 app.use('/api/scrapers', scraperRoutes);
+app.use('/api/races', racesRoutes);
 
 // Health check API endpoint is now defined inside the environment-specific blocks
 
