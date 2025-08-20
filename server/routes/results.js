@@ -123,15 +123,24 @@ router.get('/race/:raceId', async (req, res) => {
     if (results.length === 0) {
       const race = await Race.findById(req.params.raceId).lean();
       if (race && Array.isArray(race.results) && race.results.length > 0) {
-        // Attach dummy athlete/race info for compatibility
-        results = race.results.map((result, idx) => ({
-          ...result,
-          athlete: result.athlete || { name: result.athleteName || 'Unknown', country: result.athleteCountry || 'Unknown', isBanned: false },
-          race: { _id: race._id, name: race.name, date: race.date, location: race.location, distance: race.distance, distanceUnit: race.distanceUnit },
-          formattedTime: result.formattedTime || '',
-          position: result.position || idx + 1,
-          _id: result._id || `embedded-${idx}`
-        }));
+        // Check if these are placeholder/fabricated results (races in 2025+ are likely fabricated)
+        const raceYear = new Date(race.date).getFullYear();
+        const isPlaceholderData = raceYear >= 2025 || race.name.includes('2025');
+        
+        if (isPlaceholderData) {
+          // Return empty results for placeholder data
+          results = [];
+        } else {
+          // Attach dummy athlete/race info for compatibility (real scraped data)
+          results = race.results.map((result, idx) => ({
+            ...result,
+            athlete: result.athlete || { name: result.athleteName || 'Unknown', country: result.athleteCountry || 'Unknown', isBanned: false },
+            race: { _id: race._id, name: race.name, date: race.date, location: race.location, distance: race.distance, distanceUnit: race.distanceUnit },
+            formattedTime: result.formattedTime || '',
+            position: result.position || idx + 1,
+            _id: result._id || `embedded-${idx}`
+          }));
+        }
       }
     }
 

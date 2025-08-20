@@ -5,7 +5,8 @@ const Race = require('../models/Race');
 // Get all races
 router.get('/', async (req, res) => {
   try {
-    const races = await Race.find().sort({ date: -1 });
+    const currentDate = new Date();
+    const races = await Race.find({ date: { $lte: currentDate } }).sort({ date: -1 });
     res.json(races);
   } catch (err) {
     console.error(err.message);
