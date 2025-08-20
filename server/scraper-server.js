@@ -72,6 +72,8 @@ if (process.env.MONGODB_URI) {
 // API Routes
 app.use('/api/scrapers', scraperRoutes);
 app.use('/api/races', racesRoutes);
+app.use('/api/results', require('./routes/results'));
+app.use('/api/athletes', require('./routes/athletes'));
 
 // Health check API endpoint is now defined inside the environment-specific blocks
 
