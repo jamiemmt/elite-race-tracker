@@ -123,9 +123,16 @@ router.get('/race/:raceId', async (req, res) => {
     if (results.length === 0) {
       const race = await Race.findById(req.params.raceId).lean();
       if (race && Array.isArray(race.results) && race.results.length > 0) {
-        // Check if these are placeholder/fabricated results (races in 2025+ are likely fabricated)
+        // Check if these are placeholder/fabricated results 
+        // Note: 2025 Tokyo, Boston, and London marathons have real verified results
         const raceYear = new Date(race.date).getFullYear();
-        const isPlaceholderData = raceYear >= 2025 || race.name.includes('2025');
+        const raceName = race.name.toLowerCase();
+        const hasRealResults = (raceYear === 2025 && (
+          raceName.includes('tokyo') || 
+          raceName.includes('boston') || 
+          raceName.includes('london')
+        ));
+        const isPlaceholderData = raceYear > 2025 || (raceYear >= 2025 && !hasRealResults);
         
         if (isPlaceholderData) {
           // Return empty results for placeholder data

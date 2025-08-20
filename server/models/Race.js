@@ -38,6 +38,20 @@ const RaceSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  results: [{
+    athlete: {
+      name: String,
+      country: String,
+      gender: String
+    },
+    time: Number,
+    position: Number,
+    formattedTime: String
+  }],
+  lastUpdated: {
+    type: Date,
+    default: Date.now
+  },
   createdAt: {
     type: Date,
     default: Date.now
