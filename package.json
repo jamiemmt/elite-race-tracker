@@ -4,7 +4,7 @@
   "description": "Website for tracking elite race finish times with ban status",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "node server/scraper-server.js",
     "server": "nodemon server/scraper-server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
