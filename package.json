@@ -12,7 +12,7 @@
     "install-server": "npm install",
     "install-all": "npm run install-server && npm run install-client",
     "build": "cd client && npm run build",
-    "heroku-postbuild": "NPM_CONFIG_LEGACY_PEER_DEPS=true NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build"
+    "heroku-postbuild": "echo 'Skipping build on Heroku, using pre-built client'"
   },
   "keywords": [
     "race",
