@@ -114,11 +114,27 @@ router.delete('/:id', async (req, res) => {
 // Get results by race ID
 router.get('/race/:raceId', async (req, res) => {
   try {
-    const results = await Result.find({ race: req.params.raceId })
+    let results = await Result.find({ race: req.params.raceId })
       .populate('athlete', 'name country isBanned')
       .populate('race', 'name date location distance distanceUnit')
       .sort({ finishTime: 1 });
-    
+
+    // If no Result documents exist, fall back to embedded results in Race
+    if (results.length === 0) {
+      const race = await Race.findById(req.params.raceId).lean();
+      if (race && Array.isArray(race.results) && race.results.length > 0) {
+        // Attach dummy athlete/race info for compatibility
+        results = race.results.map((result, idx) => ({
+          ...result,
+          athlete: result.athlete || { name: result.athleteName || 'Unknown', country: result.athleteCountry || 'Unknown', isBanned: false },
+          race: { _id: race._id, name: race.name, date: race.date, location: race.location, distance: race.distance, distanceUnit: race.distanceUnit },
+          formattedTime: result.formattedTime || '',
+          position: result.position || idx + 1,
+          _id: result._id || `embedded-${idx}`
+        }));
+      }
+    }
+
     res.json(results);
   } catch (err) {
     console.error(err.message);
