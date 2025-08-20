@@ -151,5 +151,5 @@ class ChicagoMarathon extends BaseScraper {
   }
 }
 
-// Export an instance of the class instead of the class itself
-module.exports = new ChicagoMarathon();
+// Export the class itself
+module.exports = ChicagoMarathon;
