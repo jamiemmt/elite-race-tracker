@@ -4,7 +4,7 @@
   "description": "Website for tracking elite race finish times with ban status",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/scraper-server.js",
+    "start": "node server/index.js",
     "server": "nodemon server/scraper-server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -12,7 +12,7 @@
     "install-server": "npm install",
     "install-all": "npm run install-server && npm run install-client",
     "build": "cd client && npm run build",
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build"
+    "heroku-postbuild": "NPM_CONFIG_LEGACY_PEER_DEPS=true NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build"
   },
   "keywords": [
     "race",
