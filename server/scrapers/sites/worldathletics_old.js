@@ -761,7 +761,7 @@ class WorldAthleticsScraper extends BaseScraper {
         },
         race: {
           name: `${result.competition} ${currentYear} - ${eventName}`,
-          date: new Date(`${currentYear}-08-20`),
+          date: new Date(`${currentYear}-09-15`), // World Championships typically in September
           distance: distance.value,
           distanceUnit: distance.unit,
           location: result.location,

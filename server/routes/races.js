@@ -6,6 +6,8 @@ const Race = require('../models/Race');
 router.get('/', async (req, res) => {
   try {
     const currentDate = new Date();
+    // Set current date to start of today to include races happening today
+    currentDate.setHours(23, 59, 59, 999);
     const races = await Race.find({ date: { $lte: currentDate } }).sort({ date: -1 });
     res.json(races);
   } catch (err) {
