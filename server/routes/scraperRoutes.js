@@ -113,7 +113,7 @@ router.get('/:name', async (req, res) => {
   }
   
   try {
-    const options = { year: year || new Date().getFullYear(), limit: limit || 20 };
+    const options = { year: year || 2024, limit: limit || 20 };
     const scraperInstance = typeof scrapers[name] === 'function' ? new scrapers[name]() : scrapers[name];
     
     let results;
