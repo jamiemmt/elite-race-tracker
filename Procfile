@@ -1,2 +1,2 @@
-web: node server/scraper-server.js
+web: node server/index.js
 scraper: node server/scripts/run-all-scrapers.js
