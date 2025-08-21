@@ -17,9 +17,16 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 let BostonMarathonScraper, WorldAthleticsScraper, AIUBannedAthletesScraper;
 
 try {
-  BostonMarathonScraper = require('../scrapers/sites/bostonmarathonv2');
+  // Prefer primary Boston scraper
+  BostonMarathonScraper = require('../scrapers/sites/bostonmarathon');
 } catch (e) {
-  console.log('Boston Marathon scraper not available, will be skipped');
+  try {
+    // Fallback to backup implementation if present
+    BostonMarathonScraper = require('../scrapers/sites/bostonmarathon-backup');
+    console.log('Using backup Boston Marathon scraper');
+  } catch (e2) {
+    console.log('Boston Marathon scraper not available, will be skipped');
+  }
 }
 
 try {
@@ -46,6 +53,10 @@ const scraperCache = new NodeCache({
 
 // Active events tracking
 const activeEvents = new Map();
+
+// Keep references to scheduled jobs to report next run times
+let dailyJobRef = null;
+let hourlyJobRef = null;
 
 /**
  * Register an active event to trigger more frequent scraping
@@ -145,20 +156,21 @@ const runScraper = async (scraperId, options = {}) => {
  */
 const initializeSchedules = () => {
   // Daily schedule (default for all scrapers)
-  schedule.scheduleJob('0 0 * * *', async () => {
+  dailyJobRef = schedule.scheduleJob('0 0 * * *', async () => {
     console.log('Running daily scraper jobs');
     
     try {
+      const currentYear = new Date().getFullYear();
       // Run AIU banned athletes scraper daily
-      await runScraper('aiu-banned');
+      await runScraper('aiu-banned', { year: currentYear });
       
       // Run other scrapers if they don't have active events
       if (!shouldRunHighFrequency('boston-marathon')) {
-        await runScraper('boston-marathon');
+        await runScraper('boston-marathon', { year: currentYear });
       }
       
       if (!shouldRunHighFrequency('world-athletics')) {
-        await runScraper('world-athletics');
+        await runScraper('world-athletics', { year: currentYear });
       }
     } catch (error) {
       console.error('Error in daily scraper jobs:', error);
@@ -166,17 +178,18 @@ const initializeSchedules = () => {
   });
   
   // Hourly schedule (for active events)
-  schedule.scheduleJob('0 * * * *', async () => {
+  hourlyJobRef = schedule.scheduleJob('0 * * * *', async () => {
     console.log('Checking for hourly scraper jobs');
     
     try {
+      const currentYear = new Date().getFullYear();
       // Check which scrapers should run hourly
       if (shouldRunHighFrequency('boston-marathon')) {
-        await runScraper('boston-marathon');
+        await runScraper('boston-marathon', { year: currentYear });
       }
       
       if (shouldRunHighFrequency('world-athletics')) {
-        await runScraper('world-athletics');
+        await runScraper('world-athletics', { year: currentYear });
       }
     } catch (error) {
       console.error('Error in hourly scraper jobs:', error);
@@ -184,6 +197,31 @@ const initializeSchedules = () => {
   });
   
   console.log('Scraper schedules initialized');
+};
+
+/**
+ * Get schedule status info including next run times and active events
+ */
+const getScheduleStatus = () => {
+  const toIso = (job) => {
+    try {
+      const n = job && typeof job.nextInvocation === 'function' ? job.nextInvocation() : null;
+      return n ? new Date(n).toISOString() : null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  return {
+    dailyNextRun: toIso(dailyJobRef),
+    hourlyNextRun: toIso(hourlyJobRef),
+    activeEvents: Array.from(activeEvents.entries()).map(([eventId, e]) => ({
+      eventId,
+      startDate: e.startDate,
+      endDate: e.endDate,
+      scrapers: e.scrapers
+    }))
+  };
 };
 
 /**
@@ -228,5 +266,6 @@ module.exports = {
   registerActiveEvent,
   triggerScraper,
   clearCache,
-  shouldRunHighFrequency
+  shouldRunHighFrequency,
+  getScheduleStatus
 };

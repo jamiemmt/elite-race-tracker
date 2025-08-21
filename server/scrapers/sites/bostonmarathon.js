@@ -178,7 +178,7 @@ class BostonMarathonScraper extends BaseScraper {
       { name: 'Dera Dida', country: 'ETH', time: '2:25:16', gender: 'Female', position: 10 }
     ];
 
-    return this.formatResults(staticResults, staticResults.length);
+    return this.formatResults(staticResults, 2024, staticResults.length);
   }
 
   /**
@@ -206,7 +206,7 @@ class BostonMarathonScraper extends BaseScraper {
       const mikaResults = await this.fetchFromMikaTiming(requestedYear);
       if (mikaResults && mikaResults.length > 0) {
         console.log(`Successfully fetched ${mikaResults.length} results from MikaTiming API`);
-        return this.formatResults(mikaResults, limit);
+        return this.formatResults(mikaResults, requestedYear, limit);
       }
     } catch (mikaError) {
       console.log('MikaTiming API failed, trying web scraping:', mikaError.message);
@@ -218,7 +218,7 @@ class BostonMarathonScraper extends BaseScraper {
       const axiosResults = await this.scrapeWithAxios(requestedYear);
       if (axiosResults && axiosResults.length > 0) {
         console.log(`Successfully scraped ${axiosResults.length} results with axios`);
-        return this.formatResults(axiosResults, limit);
+        return this.formatResults(axiosResults, requestedYear, limit);
       }
     } catch (axiosError) {
       console.log('Axios scraping failed:', axiosError.message);
@@ -235,12 +235,12 @@ class BostonMarathonScraper extends BaseScraper {
    * @param {number} limit - Maximum number of results
    * @returns {Array} - Formatted results
    */
-  formatResults(rawResults, limit) {
+  formatResults(rawResults, year, limit) {
     const results = [];
     const limitedResults = rawResults.slice(0, limit);
 
     for (const result of limitedResults) {
-      const raceName = `Boston Marathon ${new Date().getFullYear()} - ${result.gender === 'Male' ? "Men's" : "Women's"} Division`;
+      const raceName = `Boston Marathon ${year} - ${result.gender === 'Male' ? "Men's" : "Women's"} Division`;
 
       results.push({
         athlete: {
@@ -250,7 +250,7 @@ class BostonMarathonScraper extends BaseScraper {
         },
         race: {
           name: raceName,
-          date: new Date('2024-04-15'),
+          date: new Date(`${year}-04-15`),
           distance: 42195,
           distanceUnit: 'm',
           location: 'Boston, Massachusetts, USA',
@@ -307,7 +307,7 @@ class BostonMarathonScraper extends BaseScraper {
       { name: 'Sample Runner 5', country: 'KEN', time: '2:25:30', gender: 'Female', position: 2 }
     ];
 
-    return this.formatResults(sampleResults.slice(0, limit), limit);
+    return this.formatResults(sampleResults.slice(0, limit), year, limit);
   }
 }
 

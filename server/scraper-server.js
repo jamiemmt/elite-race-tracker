@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const scraperRoutes = require('./routes/scraperRoutes');
 const racesRoutes = require('./routes/races');
+const scraperSchedulerRoutes = require('./routes/scraperScheduler');
 
 // Load environment variables
 dotenv.config();
@@ -74,6 +75,7 @@ app.use('/api/scrapers', scraperRoutes);
 app.use('/api/races', racesRoutes);
 app.use('/api/results', require('./routes/results'));
 app.use('/api/athletes', require('./routes/athletes'));
+app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
 
 // Health check API endpoint is now defined inside the environment-specific blocks
 

@@ -66,6 +66,7 @@ async function loadScrapers() {
 
 async function runAllScrapers() {
   console.log('Starting scraper run at:', new Date().toISOString());
+  const currentYear = new Date().getFullYear();
   
   // Connect to MongoDB
   if (!process.env.MONGODB_URI) {
@@ -88,9 +89,9 @@ async function runAllScrapers() {
         
         let results;
         if (typeof scraperInstance.scrape === 'function') {
-          results = await scraperInstance.scrape({});
+          results = await scraperInstance.scrape({ year: currentYear });
         } else if (typeof scraperInstance.scrapeResults === 'function') {
-          results = await scraperInstance.scrapeResults({});
+          results = await scraperInstance.scrapeResults({ year: currentYear });
         } else {
           console.error(`No scrape or scrapeResults method found for ${name}`);
           continue;

@@ -105,15 +105,19 @@ router.post('/clear-cache', (req, res) => {
 router.get('/status', (req, res) => {
   try {
     const { scraperId } = req.query;
-    
-    const status = {
-      isHighFrequency: scraperId 
+    const scheduleInfo = scraperScheduler.getScheduleStatus();
+
+    const response = {
+      currentTime: new Date().toISOString(),
+      dailyNextRun: scheduleInfo.dailyNextRun,
+      hourlyNextRun: scheduleInfo.hourlyNextRun,
+      activeEvents: scheduleInfo.activeEvents,
+      isHighFrequency: scraperId
         ? scraperScheduler.shouldRunHighFrequency(scraperId)
-        : false,
-      currentTime: new Date()
+        : false
     };
-    
-    res.json(status);
+
+    res.json(response);
   } catch (error) {
     console.error('Error getting scheduler status:', error);
     res.status(500).json({ 
