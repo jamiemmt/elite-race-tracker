@@ -126,14 +126,23 @@ const runScraper = async (scraperId, options = {}) => {
     let results;
     switch (scraperId) {
       case 'boston-marathon':
+        if (!BostonMarathonScraper) {
+          throw new Error('Boston Marathon scraper not available');
+        }
         const bostonScraper = new BostonMarathonScraper();
         results = await bostonScraper.scrape(options);
         break;
       case 'world-athletics':
+        if (!WorldAthleticsScraper) {
+          throw new Error('World Athletics scraper not available');
+        }
         const worldAthleticsScraper = new WorldAthleticsScraper();
         results = await worldAthleticsScraper.scrape(options);
         break;
       case 'aiu-banned':
+        if (!AIUBannedAthletesScraper) {
+          throw new Error('AIU Banned Athletes scraper not available');
+        }
         const aiuScraper = new AIUBannedAthletesScraper();
         results = await aiuScraper.scrape(options);
         break;
