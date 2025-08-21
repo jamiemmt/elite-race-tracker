@@ -345,4 +345,4 @@ class AthleticsIntegrityScraper extends BaseScraper {
   }
 }
 
-module.exports = new AthleticsIntegrityScraper();
+module.exports = AthleticsIntegrityScraper;
