@@ -478,6 +478,12 @@ class BannedAthleteService {
       // Process each athlete
       for (const bannedAthlete of allAiuAthletes) {
         try {
+          // Skip athletes without proper name or country
+          if (!bannedAthlete.name || !bannedAthlete.country || bannedAthlete.name.length < 2) {
+            console.log(`Skipping invalid athlete: ${bannedAthlete.name || 'No name'} (${bannedAthlete.country || 'No country'})`);
+            continue;
+          }
+          
           // Check if athlete already exists (case-insensitive name match)
           const existingAthlete = await Athlete.findOne({
             name: new RegExp(`^${bannedAthlete.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
@@ -518,7 +524,7 @@ class BannedAthleteService {
             const newAthlete = new Athlete({
               name: bannedAthlete.name,
               country: bannedAthlete.country,
-              gender: 'Unknown', // Will be updated when we have more data
+              gender: 'Male', // Default to Male, will be updated when we have more data
               isBanned: bannedAthlete.banStatus !== 'provisional',
               isProvisionallyBanned: bannedAthlete.banStatus === 'provisional',
               banReason: bannedAthlete.reason,
