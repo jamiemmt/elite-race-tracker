@@ -2,7 +2,6 @@
  * Service for managing banned athlete detection and updates
  */
 
-const Athlete = require('../models/Athlete');
 const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
@@ -177,6 +176,7 @@ class BannedAthleteService {
    */
   async updateAthleteBanStatusFromKnownList() {
     try {
+      const Athlete = require('../models/Athlete');
       const bannedAthletes = this.knownBannedAthletes;
       let updatedCount = 0;
       
@@ -267,6 +267,7 @@ class BannedAthleteService {
    */
   async getBanStatistics() {
     try {
+      const Athlete = require('../models/Athlete');
       const bannedAthletes = await Athlete.find({ isBanned: true });
       
       const stats = {
@@ -307,6 +308,7 @@ class BannedAthleteService {
    */
   async getBannedAthletesFromDatabase() {
     try {
+      const Athlete = require('../models/Athlete');
       const bannedAthletes = await Athlete.find({ isBanned: true })
         .select('name country banReason banSource banAgency banType banDateDetected')
         .sort({ name: 1 });
