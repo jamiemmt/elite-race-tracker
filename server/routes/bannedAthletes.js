@@ -4,27 +4,28 @@ const BannedAthleteService = require('../services/bannedAthleteService');
 
 const bannedAthleteService = new BannedAthleteService();
 
-// Get all banned athletes from various sources
+// Get list of banned athletes (known list only for now)
 router.get('/list', async (req, res) => {
   try {
-    const bannedAthletes = await bannedAthleteService.getAllBannedAthletes();
-    res.json(bannedAthletes);
-  } catch (err) {
-    console.error('Error fetching banned athletes:', err);
-    res.status(500).json({ error: 'Failed to fetch banned athletes list' });
+    // Return just the known banned athletes list for immediate response
+    const knownBanned = bannedAthleteService.getKnownBannedAthletes();
+    res.json(knownBanned);
+  } catch (error) {
+    console.error('Error fetching banned athletes:', error);
+    res.status(500).json({ error: 'Failed to fetch banned athletes' });
   }
 });
 
-// Update athlete ban status in database
+// Update athlete ban status in database (use known list only for now)
 router.post('/update', async (req, res) => {
   try {
-    const result = await bannedAthleteService.updateAthleteBanStatus();
+    const result = await bannedAthleteService.updateAthleteBanStatusFromKnownList();
     res.json({
       message: 'Athlete ban status updated successfully',
       ...result
     });
-  } catch (err) {
-    console.error('Error updating athlete ban status:', err);
+  } catch (error) {
+    console.error('Error updating athlete ban status:', error);
     res.status(500).json({ error: 'Failed to update athlete ban status' });
   }
 });

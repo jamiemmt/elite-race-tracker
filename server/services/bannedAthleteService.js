@@ -39,6 +39,13 @@ class BannedAthleteService {
   }
 
   /**
+   * Get the known banned athletes list
+   */
+  getKnownBannedAthletes() {
+    return this.knownBannedAthletes;
+  }
+
+  /**
    * Download and parse AIU banned athletes PDF
    */
   async downloadAndParseAiuList() {
@@ -50,33 +57,37 @@ class BannedAthleteService {
         fs.mkdirSync(this.tempDir, { recursive: true });
       }
       
-      // Download PDF
+      // Download PDF with timeout and smaller chunk size
       const response = await axios.get(this.aiuPdfUrl, {
         responseType: 'arraybuffer',
-        timeout: 30000
+        timeout: 15000, // 15 second timeout
+        maxContentLength: 10 * 1024 * 1024, // 10MB max
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; EliteRaceTracker/1.0)'
+        }
       });
       
-      const pdfPath = path.join(this.tempDir, 'aiu-banned-list.pdf');
-      fs.writeFileSync(pdfPath, response.data);
-      
       // Parse PDF
-      const pdfBuffer = fs.readFileSync(pdfPath);
+      const pdfBuffer = Buffer.from(response.data);
       const pdfData = await pdf(pdfBuffer);
       
-      // Clean up temp file
-      fs.unlinkSync(pdfPath);
+      // Extract athlete names and countries from text
+      const bannedAthletes = this.extractAthletesFromPdfText(pdfData.text);
       
-      return this.parseAiuPdfText(pdfData.text);
+      console.log(`Found ${bannedAthletes.length} banned athletes in AIU list`);
+      return bannedAthletes;
+      
     } catch (error) {
-      console.error('Error downloading/parsing AIU list:', error);
+      console.error('Error downloading/parsing AIU list:', error.message);
+      // Return empty array if download fails, we'll use known banned list
       return [];
     }
   }
 
   /**
-   * Parse AIU PDF text to extract banned athlete information
+   * Extract athlete names and countries from AIU PDF text
    */
-  parseAiuPdfText(text) {
+  extractAthletesFromPdfText(text) {
     const bannedAthletes = [];
     const lines = text.split('\n');
     
@@ -151,6 +162,44 @@ class BannedAthleteService {
     
     console.log(`Total unique banned athletes: ${uniqueBanned.length}`);
     return uniqueBanned;
+  }
+
+  /**
+   * Update athlete ban status in database using known list only
+   */
+  async updateAthleteBanStatusFromKnownList() {
+    try {
+      const bannedAthletes = this.knownBannedAthletes;
+      let updatedCount = 0;
+      
+      for (const bannedAthlete of bannedAthletes) {
+        // Find matching athletes in database (fuzzy matching)
+        const athletes = await Athlete.find({
+          $or: [
+            { name: new RegExp(bannedAthlete.name, 'i') },
+            { name: new RegExp(bannedAthlete.name.replace(/\s+/g, '.*'), 'i') }
+          ],
+          country: bannedAthlete.country
+        });
+        
+        for (const athlete of athletes) {
+          if (!athlete.isBanned) {
+            athlete.isBanned = true;
+            athlete.banReason = bannedAthlete.reason;
+            athlete.banSource = 'Known case';
+            await athlete.save();
+            updatedCount++;
+            console.log(`Marked ${athlete.name} (${athlete.country}) as banned`);
+          }
+        }
+      }
+      
+      console.log(`Updated ban status for ${updatedCount} athletes`);
+      return { updated: updatedCount, total: bannedAthletes.length };
+    } catch (error) {
+      console.error('Error updating athlete ban status:', error);
+      throw error;
+    }
   }
 
   /**
