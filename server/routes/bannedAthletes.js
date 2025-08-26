@@ -85,4 +85,26 @@ router.get('/database', async (req, res) => {
   }
 });
 
+// Populate database with all current AIU banned athletes from live sources
+router.post('/populate-aiu', async (req, res) => {
+  try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
+    const result = await bannedAthleteService.populateAllCurrentAiuAthletes();
+    res.json({
+      success: true,
+      message: 'AIU banned athletes populated successfully',
+      summary: result
+    });
+  } catch (error) {
+    console.error('Error populating AIU banned athletes:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to populate AIU banned athletes',
+      details: error.message 
+    });
+  }
+});
+
 module.exports = router;

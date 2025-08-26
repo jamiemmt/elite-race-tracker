@@ -426,6 +426,136 @@ class BannedAthleteService {
       throw error;
     }
   }
+
+  /**
+   * Populate database with all current AIU banned athletes from live sources
+   */
+  async populateAllCurrentAiuAthletes() {
+    try {
+      const Athlete = require('../models/Athlete');
+      let totalAdded = 0;
+      let totalUpdated = 0;
+      const errors = [];
+      
+      console.log('Fetching all current AIU banned athletes from live sources...');
+      
+      // Get live data from all AIU sources
+      const [provisionalAthletes, firstInstanceAthletes, aiuPdfAthletes] = await Promise.allSettled([
+        this.parseProvisionalSuspensions(),
+        this.parseFirstInstanceDecisions(), 
+        this.downloadAndParseAiuList()
+      ]);
+      
+      // Combine all results
+      const allAiuAthletes = [];
+      
+      if (provisionalAthletes.status === 'fulfilled') {
+        allAiuAthletes.push(...provisionalAthletes.value);
+        console.log(`✓ Found ${provisionalAthletes.value.length} provisional suspensions`);
+      } else {
+        console.error('✗ Failed to fetch provisional suspensions:', provisionalAthletes.reason?.message);
+        errors.push('Provisional suspensions failed');
+      }
+      
+      if (firstInstanceAthletes.status === 'fulfilled') {
+        allAiuAthletes.push(...firstInstanceAthletes.value);
+        console.log(`✓ Found ${firstInstanceAthletes.value.length} first instance decisions`);
+      } else {
+        console.error('✗ Failed to fetch first instance decisions:', firstInstanceAthletes.reason?.message);
+        errors.push('First instance decisions failed');
+      }
+      
+      if (aiuPdfAthletes.status === 'fulfilled') {
+        allAiuAthletes.push(...aiuPdfAthletes.value);
+        console.log(`✓ Found ${aiuPdfAthletes.value.length} athletes from AIU PDF`);
+      } else {
+        console.error('✗ Failed to fetch AIU PDF:', aiuPdfAthletes.reason?.message);
+        errors.push('AIU PDF failed');
+      }
+      
+      console.log(`Total found: ${allAiuAthletes.length} athletes from AIU sources`);
+      
+      // Process each athlete
+      for (const bannedAthlete of allAiuAthletes) {
+        try {
+          // Check if athlete already exists (case-insensitive name match)
+          const existingAthlete = await Athlete.findOne({
+            name: new RegExp(`^${bannedAthlete.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+            country: bannedAthlete.country
+          });
+          
+          if (existingAthlete) {
+            // Update existing athlete if needed
+            let updated = false;
+            
+            if (bannedAthlete.banStatus === 'provisional' && !existingAthlete.isProvisionallyBanned) {
+              existingAthlete.isProvisionallyBanned = true;
+              existingAthlete.banStatus = 'provisional';
+              updated = true;
+            } else if (bannedAthlete.banStatus !== 'provisional' && !existingAthlete.isBanned) {
+              existingAthlete.isBanned = true;
+              existingAthlete.banStatus = bannedAthlete.banStatus || 'permanent';
+              updated = true;
+            }
+            
+            // Always update ban details if they're more recent or detailed
+            if (bannedAthlete.source && bannedAthlete.source !== 'Known case') {
+              existingAthlete.banReason = bannedAthlete.reason;
+              existingAthlete.banSource = bannedAthlete.source;
+              existingAthlete.banAgency = bannedAthlete.agency;
+              existingAthlete.banType = bannedAthlete.banType;
+              existingAthlete.banDateDetected = bannedAthlete.dateDetected;
+              updated = true;
+            }
+            
+            if (updated) {
+              await existingAthlete.save();
+              totalUpdated++;
+              console.log(`Updated ${existingAthlete.name} (${existingAthlete.country}) - ${bannedAthlete.banStatus || 'banned'}`);
+            }
+          } else {
+            // Create new athlete
+            const newAthlete = new Athlete({
+              name: bannedAthlete.name,
+              country: bannedAthlete.country,
+              gender: 'Unknown', // Will be updated when we have more data
+              isBanned: bannedAthlete.banStatus !== 'provisional',
+              isProvisionallyBanned: bannedAthlete.banStatus === 'provisional',
+              banReason: bannedAthlete.reason,
+              banSource: bannedAthlete.source,
+              banAgency: bannedAthlete.agency,
+              banType: bannedAthlete.banType,
+              banDateDetected: bannedAthlete.dateDetected,
+              banStatus: bannedAthlete.banStatus || 'permanent'
+            });
+            
+            await newAthlete.save();
+            totalAdded++;
+            console.log(`Added ${newAthlete.name} (${newAthlete.country}) - ${bannedAthlete.banStatus || 'banned'}`);
+          }
+        } catch (error) {
+          console.error(`Error processing ${bannedAthlete.name}:`, error.message);
+          errors.push(`Failed to process ${bannedAthlete.name}: ${error.message}`);
+        }
+      }
+      
+      const summary = {
+        totalResults: allAiuAthletes.length,
+        processedResults: allAiuAthletes.length - errors.length,
+        newAthletes: totalAdded,
+        updatedBanStatus: totalUpdated,
+        errors: errors,
+        totalBannedAthletes: totalAdded + totalUpdated
+      };
+      
+      console.log(`AIU population complete: ${totalAdded} added, ${totalUpdated} updated, ${errors.length} errors`);
+      return summary;
+      
+    } catch (error) {
+      console.error('Error populating AIU athletes:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = BannedAthleteService;
