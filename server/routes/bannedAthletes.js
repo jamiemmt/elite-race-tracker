@@ -36,9 +36,31 @@ router.get('/check/:name/:country', async (req, res) => {
     const { name, country } = req.params;
     const isBanned = await bannedAthleteService.isAthleteBanned(name, country);
     res.json({ name, country, isBanned });
-  } catch (err) {
-    console.error('Error checking athlete ban status:', err);
+  } catch (error) {
+    console.error('Error checking athlete ban status:', error);
     res.status(500).json({ error: 'Failed to check athlete ban status' });
+  }
+});
+
+// Get ban statistics by agency/source
+router.get('/stats', async (req, res) => {
+  try {
+    const stats = await bannedAthleteService.getBanStatistics();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching ban statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch ban statistics' });
+  }
+});
+
+// Get banned athletes from database with source information
+router.get('/database', async (req, res) => {
+  try {
+    const bannedAthletes = await bannedAthleteService.getBannedAthletesFromDatabase();
+    res.json(bannedAthletes);
+  } catch (error) {
+    console.error('Error fetching banned athletes from database:', error);
+    res.status(500).json({ error: 'Failed to fetch banned athletes from database' });
   }
 });
 

@@ -16,25 +16,30 @@ class BannedAthleteService {
     // Known banned athletes from Olympic medal stripping and major doping cases
     this.knownBannedAthletes = [
       // Russian state-sponsored doping program athletes
-      { name: 'Mariya Savinova', country: 'RUS', reason: 'Olympic 800m gold stripped (2012)' },
-      { name: 'Ekaterina Poistogova', country: 'RUS', reason: 'Olympic 800m bronze stripped (2012)' },
-      { name: 'Yulia Stepanova', country: 'RUS', reason: 'Whistleblower, previously banned' },
-      { name: 'Liliya Shobukhova', country: 'RUS', reason: 'Marathon results annulled' },
+      { name: 'Mariya Savinova', country: 'RUS', reason: 'Olympic 800m gold stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Doping violation', dateDetected: '2015' },
+      { name: 'Ekaterina Poistogova', country: 'RUS', reason: 'Olympic 800m bronze stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Doping violation', dateDetected: '2015' },
+      { name: 'Yulia Stepanova', country: 'RUS', reason: 'Whistleblower, previously banned', source: 'RUSADA/WADA', agency: 'RUSADA', banType: 'Doping violation', dateDetected: '2013' },
+      { name: 'Liliya Shobukhova', country: 'RUS', reason: 'Marathon results annulled', source: 'IAAF/AIU', agency: 'AIU', banType: 'Biological passport', dateDetected: '2014' },
       
       // BALCO scandal athletes
-      { name: 'Marion Jones', country: 'USA', reason: 'Olympic medals stripped (2000)' },
-      { name: 'Tim Montgomery', country: 'USA', reason: 'World record annulled' },
+      { name: 'Marion Jones', country: 'USA', reason: 'Olympic medals stripped (2000)', source: 'USADA/IOC', agency: 'USADA', banType: 'Steroid use', dateDetected: '2007' },
+      { name: 'Tim Montgomery', country: 'USA', reason: 'World record annulled', source: 'USADA', agency: 'USADA', banType: 'BALCO scandal', dateDetected: '2005' },
       
       // Other major cases
-      { name: 'Ben Johnson', country: 'CAN', reason: 'Olympic 100m gold stripped (1988)' },
-      { name: 'Justin Gatlin', country: 'USA', reason: 'Previously banned, returned' },
-      { name: 'Tyson Gay', country: 'USA', reason: 'Previously banned, returned' },
-      { name: 'Rita Jeptoo', country: 'KEN', reason: 'Boston/Chicago Marathon wins stripped' },
-      { name: 'Jemima Sumgong', country: 'KEN', reason: 'Olympic marathon gold, banned' },
+      { name: 'Ben Johnson', country: 'CAN', reason: 'Olympic 100m gold stripped (1988)', source: 'IOC/IAAF', agency: 'IOC', banType: 'Stanozolol', dateDetected: '1988' },
+      { name: 'Justin Gatlin', country: 'USA', reason: 'Previously banned, returned', source: 'USADA', agency: 'USADA', banType: 'Testosterone', dateDetected: '2006' },
+      { name: 'Tyson Gay', country: 'USA', reason: 'Previously banned, returned', source: 'USADA', agency: 'USADA', banType: 'Steroid use', dateDetected: '2013' },
+      { name: 'Rita Jeptoo', country: 'KEN', reason: 'Boston/Chicago Marathon wins stripped', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2014' },
+      { name: 'Jemima Sumgong', country: 'KEN', reason: 'Olympic marathon gold, banned', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2017' },
       
       // Recent high-profile cases
-      { name: 'Shelby Houlihan', country: 'USA', reason: 'American record holder, banned' },
-      { name: 'Ryan Crouser', country: 'USA', reason: 'Shot put, previously sanctioned' },
+      { name: 'Shelby Houlihan', country: 'USA', reason: 'American record holder, banned', source: 'USADA', agency: 'USADA', banType: 'Nandrolone', dateDetected: '2021' },
+      { name: 'Ryan Crouser', country: 'USA', reason: 'Shot put, previously sanctioned', source: 'USADA', agency: 'USADA', banType: 'Whereabouts violation', dateDetected: '2013' },
+      
+      // Additional WADA/AIU cases
+      { name: 'Asbel Kiprop', country: 'KEN', reason: '1500m world champion banned', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2019' },
+      { name: 'Rashid Ramzi', country: 'BRN', reason: 'Olympic 1500m gold stripped (2008)', source: 'WADA/IOC', agency: 'WADA', banType: 'CERA-EPO', dateDetected: '2009' },
+      { name: 'Bahrain 4x400m team', country: 'BRN', reason: 'Olympic relay gold stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Steroid use', dateDetected: '2019' },
     ];
   }
 
@@ -97,7 +102,7 @@ class BannedAthleteService {
       const line = lines[i].trim();
       
       // Skip empty lines and headers
-      if (!line || line.includes('GLOBAL LIST') || line.includes('Page ')) {
+      if (!line || line.includes('GLOBAL LIST') || line.includes('Page ') || line.includes('Athletics Integrity Unit')) {
         continue;
       }
       
@@ -116,8 +121,11 @@ class BannedAthleteService {
           currentAthlete = {
             name: this.formatName(name),
             country: country,
-            source: 'AIU',
-            reason: 'Listed on AIU Global Banned List'
+            source: 'AIU GLIP',
+            agency: 'AIU',
+            banType: 'Various violations',
+            reason: 'Listed on AIU Global Banned List',
+            dateDetected: 'Various'
           };
         }
       } else if (currentAthlete && line.includes('Ineligible until')) {
@@ -186,10 +194,13 @@ class BannedAthleteService {
           if (!athlete.isBanned) {
             athlete.isBanned = true;
             athlete.banReason = bannedAthlete.reason;
-            athlete.banSource = 'Known case';
+            athlete.banSource = bannedAthlete.source;
+            athlete.banAgency = bannedAthlete.agency;
+            athlete.banType = bannedAthlete.banType;
+            athlete.banDateDetected = bannedAthlete.dateDetected;
             await athlete.save();
             updatedCount++;
-            console.log(`Marked ${athlete.name} (${athlete.country}) as banned`);
+            console.log(`Marked ${athlete.name} (${athlete.country}) as banned by ${bannedAthlete.agency}`);
           }
         }
       }
@@ -241,15 +252,78 @@ class BannedAthleteService {
   }
 
   /**
-   * Check if an athlete name matches any banned athlete
+   * Check if an athlete is banned
    */
-  async isAthleteBanned(athleteName, country) {
-    const bannedAthletes = await this.getAllBannedAthletes();
-    
-    return bannedAthletes.some(banned => 
-      banned.name.toLowerCase().includes(athleteName.toLowerCase()) ||
-      athleteName.toLowerCase().includes(banned.name.toLowerCase())
+  async isAthleteBanned(name, country) {
+    const allBanned = await this.getAllBannedAthletes();
+    return allBanned.some(banned => 
+      banned.name.toLowerCase().includes(name.toLowerCase()) && 
+      banned.country === country
     );
+  }
+
+  /**
+   * Get ban statistics by agency/source
+   */
+  async getBanStatistics() {
+    try {
+      const bannedAthletes = await Athlete.find({ isBanned: true });
+      
+      const stats = {
+        total: bannedAthletes.length,
+        byAgency: {},
+        byBanType: {},
+        byCountry: {},
+        bySource: {}
+      };
+
+      bannedAthletes.forEach(athlete => {
+        // Count by agency
+        const agency = athlete.banAgency || 'Unknown';
+        stats.byAgency[agency] = (stats.byAgency[agency] || 0) + 1;
+
+        // Count by ban type
+        const banType = athlete.banType || 'Unknown';
+        stats.byBanType[banType] = (stats.byBanType[banType] || 0) + 1;
+
+        // Count by country
+        const country = athlete.country || 'Unknown';
+        stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
+
+        // Count by source
+        const source = athlete.banSource || 'Unknown';
+        stats.bySource[source] = (stats.bySource[source] || 0) + 1;
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting ban statistics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get banned athletes from database with full source information
+   */
+  async getBannedAthletesFromDatabase() {
+    try {
+      const bannedAthletes = await Athlete.find({ isBanned: true })
+        .select('name country banReason banSource banAgency banType banDateDetected')
+        .sort({ name: 1 });
+
+      return bannedAthletes.map(athlete => ({
+        name: athlete.name,
+        country: athlete.country,
+        reason: athlete.banReason,
+        source: athlete.banSource,
+        agency: athlete.banAgency,
+        banType: athlete.banType,
+        dateDetected: athlete.banDateDetected
+      }));
+    } catch (error) {
+      console.error('Error fetching banned athletes from database:', error);
+      throw error;
+    }
   }
 }
 

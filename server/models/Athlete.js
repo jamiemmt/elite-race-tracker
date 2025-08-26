@@ -23,6 +23,22 @@ const AthleteSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  banReason: {
+    type: String
+  },
+  banSource: {
+    type: String
+  },
+  banAgency: {
+    type: String,
+    enum: ['AIU', 'WADA', 'USADA', 'RUSADA', 'ADAK', 'IOC', 'IAAF', 'Other']
+  },
+  banType: {
+    type: String
+  },
+  banDateDetected: {
+    type: String
+  },
   banHistory: [{
     startDate: {
       type: Date,
@@ -34,6 +50,15 @@ const AthleteSchema = new mongoose.Schema({
     reason: {
       type: String,
       required: true
+    },
+    source: {
+      type: String
+    },
+    agency: {
+      type: String
+    },
+    banType: {
+      type: String
     }
   }],
   createdAt: {
