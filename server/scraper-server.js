@@ -4,9 +4,10 @@ const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
-const scraperRoutes = require('./routes/scraperRoutes');
+const scraperRoutes = require('./routes/scrapers');
 const racesRoutes = require('./routes/races');
 const scraperSchedulerRoutes = require('./routes/scraperScheduler');
+const bannedAthleteRoutes = require('./routes/bannedAthletes');
 
 // Load environment variables
 dotenv.config();
@@ -70,12 +71,13 @@ if (process.env.MONGODB_URI) {
   console.log('No MongoDB URI provided. Running without database connection.');
 }
 
-// API Routes
+// Register routes
 app.use('/api/scrapers', scraperRoutes);
 app.use('/api/races', racesRoutes);
+app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
+app.use('/api/banned-athletes', bannedAthleteRoutes);
 app.use('/api/results', require('./routes/results'));
 app.use('/api/athletes', require('./routes/athletes'));
-app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
 
 // Health check API endpoint is now defined inside the environment-specific blocks
 
