@@ -45,14 +45,16 @@ const FastestTimes = () => {
         setAvailableEvents(availableEventsArray);
         
         // Extract unique years
-        const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))].sort((a, b) => b - a);
-        setAvailableYears(uniqueYears.map(year => year.toString()));
+        const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))]
+          .sort((a, b) => b - a); // Sort descending (newest first)
+        setAvailableYears(uniqueYears);
         
+        // Set default year to current year if available, otherwise most recent
         const currentYear = new Date().getFullYear();
         if (uniqueYears.includes(currentYear)) {
-          setSelectedYear(currentYear.toString());
+          setYear(currentYear);
         } else if (uniqueYears.length > 0) {
-          setSelectedYear(uniqueYears[0].toString());
+          setYear(uniqueYears[0]);
         }
         
         // Set default event if available
@@ -72,45 +74,35 @@ const FastestTimes = () => {
   }, []);
 
   const fetchResults = useCallback(async () => {
-      if (!selectedEvent) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const [distance, unit] = selectedEvent.match(/^(\d+(?:\.\d+)?)([a-z]+)$/).slice(1);
-        const response = await axios.get(`/api/results/fastest/${distance}/${unit}`, {
-          params: { year: selectedYear, gender: selectedGender }
-        });
-        
-        let filteredResults = response.data;
-        
-        if (showBannedOnly) {
-          filteredResults = filteredResults.filter(result => 
-            result.athlete && (result.athlete.isBanned || result.athlete.isProvisionallyBanned)
-          );
-        }
-        
-        setResults(filteredResults);
-      } catch (err) {
-        console.error('Error fetching results:', err);
-        setError('Failed to load fastest times');
-      } finally {
-        setLoading(false);
-      }
-    }, [selectedEvent, selectedYear, selectedGender, showBannedOnly]);
-
-    Compiled with problems:
-    ×
-    ERROR
-    [eslint] 
-    src/pages/FastestTimes.js
-      Line 55:11:   'setYear' is not defined      no-undef
-      Line 57:11:   'setYear' is not defined      no-undef
-      Line 76:24:   'useCallback' is not defined  no-undef
-      Line 152:12:  'FaTrophy' is not defined     react/jsx-no-undef
+    if (!selectedEvent) return;
     
-    Search for the keywords to learn more about each error.
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const [distance, unit] = selectedEvent.match(/^(\d+(?:\.\d+)?)([a-z]+)$/).slice(1);
+      const response = await axios.get(`/api/results/fastest/${distance}/${unit}`, {
+        params: { year: selectedYear, gender: selectedGender }
+      });
+      
+      let filteredResults = response.data;
+      
+      if (showBannedOnly) {
+        filteredResults = filteredResults.filter(result => 
+          result.athlete && (result.athlete.isBanned || result.athlete.isProvisionallyBanned)
+        );
+      }
+      
+      setResults(filteredResults);
+    } catch (err) {
+      console.error('Error fetching results:', err);
+      setError('Failed to load fastest times');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedEvent, selectedYear, selectedGender, showBannedOnly]);
+
+  useEffect(() => {
     fetchResults();
   }, [selectedEvent, selectedYear, selectedGender, showBannedOnly, fetchResults]);
 
