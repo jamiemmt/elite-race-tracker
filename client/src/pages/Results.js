@@ -173,7 +173,7 @@ const Results = () => {
                 <option value="">All Races</option>
                 {races.map(race => (
                   <option key={race._id} value={race._id}>
-                    {race.name} ({race.distance}{race.distanceUnit})
+                    {race.name} ({race.distance} {race.distanceUnit})
                   </option>
                 ))}
               </Form.Select>

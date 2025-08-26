@@ -10,10 +10,10 @@ const FastestTimes = () => {
   const [error, setError] = useState(null);
   
   // Filter states
-  const [selectedDistance, setSelectedDistance] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
   const [showBanned, setShowBanned] = useState(true);
-  const [availableDistances, setAvailableDistances] = useState([]);
+  const [availableEvents, setAvailableEvents] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
   
   // Common race distances
@@ -28,20 +28,20 @@ const FastestTimes = () => {
       try {
         const res = await axios.get('/api/races');
         
-        // Extract unique distance combinations
-        const uniqueDistances = new Set();
+        // Extract unique event combinations
+        const uniqueEvents = new Set();
         res.data.forEach(race => {
-          uniqueDistances.add(`${race.distance} ${race.distanceUnit}`);
+          uniqueEvents.add(`${race.distance} ${race.distanceUnit}`);
         });
         
         // Convert to array and sort by distance value
-        const availableDistancesArray = [...uniqueDistances].sort((a, b) => {
+        const availableEventsArray = [...uniqueEvents].sort((a, b) => {
           const aValue = parseFloat(a.split(' ')[0]);
           const bValue = parseFloat(b.split(' ')[0]);
           return aValue - bValue;
         });
         
-        setAvailableDistances(availableDistancesArray);
+        setAvailableEvents(availableEventsArray);
         
         // Extract unique years
         const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))]
@@ -56,9 +56,9 @@ const FastestTimes = () => {
           setYear(uniqueYears[0]);
         }
         
-        // Set default distance if available
-        if (availableDistancesArray.length > 0) {
-          setSelectedDistance(availableDistancesArray[0]);
+        // Set default event if available
+        if (availableEventsArray.length > 0) {
+          setSelectedEvent(availableEventsArray[0]);
         }
         
         setLoading(false);
@@ -74,13 +74,13 @@ const FastestTimes = () => {
 
   useEffect(() => {
     const fetchResults = async () => {
-      if (!selectedDistance) return;
+      if (!selectedEvent) return;
       
       try {
         setLoading(true);
         
-        // Parse distance and unit from selectedDistance
-        const [distance, unit] = selectedDistance.split(' ');
+        // Parse distance and unit from selectedEvent
+        const [distance, unit] = selectedEvent.split(' ');
         
         // Fetch results based on filter
         const endpoint = showBanned 
@@ -100,7 +100,7 @@ const FastestTimes = () => {
     };
 
     fetchResults();
-  }, [selectedDistance, year, showBanned]);
+  }, [selectedEvent, year, showBanned]);
 
 
   const exportToCsv = () => {
@@ -126,7 +126,7 @@ const FastestTimes = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `fastest-times-${selectedDistance.replace(' ', '')}.csv`);
+    link.setAttribute('download', `fastest-times-${selectedEvent.replace(' ', '')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -165,16 +165,16 @@ const FastestTimes = () => {
             
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label>Distance</Form.Label>
+                <Form.Label>Event</Form.Label>
                 <Form.Select 
-                  value={selectedDistance} 
-                  onChange={(e) => setSelectedDistance(e.target.value)}
-                  disabled={availableDistances.length === 0}
+                  value={selectedEvent} 
+                  onChange={(e) => setSelectedEvent(e.target.value)}
+                  disabled={availableEvents.length === 0}
                 >
-                  {availableDistances.map(dist => (
-                    <option key={dist} value={dist}>{dist}</option>
+                  {availableEvents.map(event => (
+                    <option key={event} value={event}>{event}</option>
                   ))}
-                  {availableDistances.length === 0 && (
+                  {availableEvents.length === 0 && (
                     <option value="">No races available</option>
                   )}
                 </Form.Select>
@@ -219,7 +219,7 @@ const FastestTimes = () => {
           <Card.Header>
             <h5 className="mb-0">
               <FaRunning className="me-2" /> 
-              Fastest Times: {selectedDistance} ({year})
+              Fastest Times: {selectedEvent} ({year})
               {!showBanned && ' (Clean Athletes Only)'}
             </h5>
           </Card.Header>
@@ -268,7 +268,7 @@ const FastestTimes = () => {
         </Card>
       ) : (
         <Alert variant="info">
-          No results found for {selectedDistance}. Try selecting a different distance or adding race results.
+          No results found for {selectedEvent}. Try selecting a different event or adding race results.
         </Alert>
       )}
     </Container>

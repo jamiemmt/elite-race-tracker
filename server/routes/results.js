@@ -173,7 +173,7 @@ router.get('/athlete/:athleteId', async (req, res) => {
   }
 });
 
-// Get fastest times for a specific race distance
+// Get fastest times for a specific race event
 router.get('/fastest/:distance/:unit', async (req, res) => {
   try {
     const { year } = req.query;
@@ -210,7 +210,7 @@ router.get('/fastest/:distance/:unit', async (req, res) => {
   }
 });
 
-// Get fastest times excluding banned athletes
+// Get fastest times for a specific race event excluding banned athletes
 router.get('/fastest-clean/:distance/:unit', async (req, res) => {
   try {
     const { year } = req.query;

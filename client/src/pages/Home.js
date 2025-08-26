@@ -52,7 +52,7 @@ const Home = () => {
               </div>
               <Card.Title className="text-center">Race Tracking</Card.Title>
               <Card.Text>
-                Record and organize races by category, distance, and location. Keep all your elite race data in one place.
+                Record and organize races by category, event, and location. Keep all your elite race data in one place.
               </Card.Text>
               <div className="mt-auto text-center">
                 <Link to="/races">
@@ -92,7 +92,7 @@ const Home = () => {
               </div>
               <Card.Title className="text-center">Fastest Times Tracking</Card.Title>
               <Card.Text>
-                Easily view and filter the fastest times across different race categories and distances. 
+                Easily view and filter the fastest times across different race categories and events. 
                 Identify clean athletes by filtering out those who have served bans.
               </Card.Text>
               <div className="mt-auto text-center">
