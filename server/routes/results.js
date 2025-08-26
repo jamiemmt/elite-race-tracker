@@ -196,12 +196,48 @@ router.get('/fastest/:distance/:unit', async (req, res) => {
     
     const raceIds = races.map(race => race._id);
     
-    // Get results for these races
-    const results = await Result.find({ race: { $in: raceIds } })
+    // Get results for these races - first try Result documents
+    let results = await Result.find({ race: { $in: raceIds } })
       .populate('athlete', 'name country isBanned')
       .populate('race', 'name date location distance distanceUnit')
       .sort({ finishTime: 1 })
       .limit(100);
+    
+    // If no Result documents, use embedded results from races
+    if (results.length === 0) {
+      const allResults = [];
+      
+      for (const race of races) {
+        if (race.results && race.results.length > 0) {
+          race.results.forEach(result => {
+            allResults.push({
+              _id: result._id || `embedded-${race._id}-${result.position}`,
+              athlete: {
+                name: result.athlete?.name || result.athleteName || 'Unknown',
+                country: result.athlete?.country || result.athleteCountry || 'Unknown',
+                isBanned: result.athlete?.isBanned || false
+              },
+              race: {
+                _id: race._id,
+                name: race.name,
+                date: race.date,
+                location: race.location,
+                distance: race.distance,
+                distanceUnit: race.distanceUnit
+              },
+              finishTime: result.time,
+              formattedTime: result.formattedTime,
+              position: result.position
+            });
+          });
+        }
+      }
+      
+      // Sort by finish time and limit
+      results = allResults
+        .sort((a, b) => a.finishTime - b.finishTime)
+        .slice(0, 100);
+    }
     
     res.json(results);
   } catch (err) {
@@ -237,8 +273,8 @@ router.get('/fastest-clean/:distance/:unit', async (req, res) => {
     const cleanAthletes = await Athlete.find({ isBanned: false });
     const cleanAthleteIds = cleanAthletes.map(athlete => athlete._id);
     
-    // Get results for these races and clean athletes
-    const results = await Result.find({ 
+    // Get results for these races and clean athletes - first try Result documents
+    let results = await Result.find({ 
       race: { $in: raceIds },
       athlete: { $in: cleanAthleteIds }
     })
@@ -246,6 +282,46 @@ router.get('/fastest-clean/:distance/:unit', async (req, res) => {
       .populate('race', 'name date location distance distanceUnit')
       .sort({ finishTime: 1 })
       .limit(100);
+    
+    // If no Result documents, use embedded results from races
+    if (results.length === 0) {
+      const allResults = [];
+      
+      for (const race of races) {
+        if (race.results && race.results.length > 0) {
+          race.results.forEach(result => {
+            // Only include non-banned athletes
+            const isBanned = result.athlete?.isBanned || false;
+            if (!isBanned) {
+              allResults.push({
+                _id: result._id || `embedded-${race._id}-${result.position}`,
+                athlete: {
+                  name: result.athlete?.name || result.athleteName || 'Unknown',
+                  country: result.athlete?.country || result.athleteCountry || 'Unknown',
+                  isBanned: false
+                },
+                race: {
+                  _id: race._id,
+                  name: race.name,
+                  date: race.date,
+                  location: race.location,
+                  distance: race.distance,
+                  distanceUnit: race.distanceUnit
+                },
+                finishTime: result.time,
+                formattedTime: result.formattedTime,
+                position: result.position
+              });
+            }
+          });
+        }
+      }
+      
+      // Sort by finish time and limit
+      results = allResults
+        .sort((a, b) => a.finishTime - b.finishTime)
+        .slice(0, 100);
+    }
     
     res.json(results);
   } catch (err) {

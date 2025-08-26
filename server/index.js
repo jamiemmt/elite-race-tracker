@@ -12,6 +12,7 @@ const resultRoutes = require('./routes/results');
 const scraperRoutes = require('./routes/scrapers');
 const raceResultsRoutes = require('./routes/raceResults');
 const scraperSchedulerRoutes = require('./routes/scraperScheduler');
+const bannedAthleteRoutes = require('./routes/bannedAthletes');
 
 // Initialize express app
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/results', resultRoutes);
 app.use('/api/scrapers', scraperRoutes);
 app.use('/api/race-results', raceResultsRoutes);
 app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
+app.use('/api/banned-athletes', bannedAthleteRoutes);
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
