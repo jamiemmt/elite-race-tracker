@@ -52,9 +52,9 @@ const FastestTimes = () => {
         // Set default year to current year if available, otherwise most recent
         const currentYear = new Date().getFullYear();
         if (uniqueYears.includes(currentYear)) {
-          setYear(currentYear);
+          setSelectedYear(currentYear.toString());
         } else if (uniqueYears.length > 0) {
-          setYear(uniqueYears[0]);
+          setSelectedYear(uniqueYears[0].toString());
         }
         
         // Set default event if available
