@@ -5,11 +5,14 @@ const BannedAthleteService = require('../services/bannedAthleteService');
 const bannedAthleteService = new BannedAthleteService();
 
 // Get list of banned athletes (known list only for now)
-router.get('/list', async (req, res) => {
+router.get('/list', (req, res) => {
   try {
     // Return just the known banned athletes list for immediate response
     const knownBanned = bannedAthleteService.getKnownBannedAthletes();
-    res.json(knownBanned);
+    res.json({
+      count: knownBanned.length,
+      athletes: knownBanned
+    });
   } catch (error) {
     console.error('Error fetching banned athletes:', error);
     res.status(500).json({ error: 'Failed to fetch banned athletes' });
