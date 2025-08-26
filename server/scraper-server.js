@@ -89,7 +89,7 @@ if (process.env.NODE_ENV === 'production') {
   // API health check endpoint - moved before the catch-all route
   app.get('/api/health', (req, res) => {
     res.json({ 
-      status: 'Elite Race Tracker Service is running',
+      status: 'Clean So Far Service is running',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development'
     });
@@ -108,7 +108,7 @@ if (process.env.NODE_ENV === 'production') {
   // Basic route for development when frontend is served separately
   app.get('/', (req, res) => {
     res.json({ 
-      status: 'Elite Race Tracker API Service is running',
+      status: 'Clean So Far Scraper Server is running',
       timestamp: new Date().toISOString(),
       note: 'In development mode. Frontend should be served separately.'
     });
@@ -117,7 +117,7 @@ if (process.env.NODE_ENV === 'production') {
   // Health check endpoint for development mode
   app.get('/api/health', (req, res) => {
     res.json({ 
-      status: 'Elite Race Tracker Service is running',
+      status: 'Clean So Far Service is running',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development'
     });

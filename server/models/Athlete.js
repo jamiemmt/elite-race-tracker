@@ -23,6 +23,10 @@ const AthleteSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isProvisionallyBanned: {
+    type: Boolean,
+    default: false
+  },
   banReason: {
     type: String
   },
@@ -38,6 +42,11 @@ const AthleteSchema = new mongoose.Schema({
   },
   banDateDetected: {
     type: String
+  },
+  banStatus: {
+    type: String,
+    enum: ['permanent', 'provisional', 'first_instance', 'cleared'],
+    default: 'cleared'
   },
   banHistory: [{
     startDate: {

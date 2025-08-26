@@ -14,6 +14,7 @@ import Races from './pages/Races';
 import RaceDetail from './pages/RaceDetail';
 import Results from './pages/Results';
 import FastestTimes from './pages/FastestTimes';
+import BannedAthletes from './pages/BannedAthletes';
 import AddAthlete from './pages/AddAthlete';
 import AddRace from './pages/AddRace';
 import AddResult from './pages/AddResult';
@@ -41,6 +42,7 @@ function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/results/add" element={<AddResult />} />
             <Route path="/fastest-times" element={<FastestTimes />} />
+            <Route path="/banned-athletes" element={<BannedAthletes />} />
             <Route path="/scrapers" element={<ScraperManager />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

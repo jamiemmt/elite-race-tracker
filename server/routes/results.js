@@ -173,35 +173,54 @@ router.get('/athlete/:athleteId', async (req, res) => {
   }
 });
 
-// Get fastest times for a specific race event
+// Get fastest times for a specific distance and unit
 router.get('/fastest/:distance/:unit', async (req, res) => {
   try {
-    const { year } = req.query;
+    const { distance, unit } = req.params;
+    const { year, gender } = req.query;
     
-    // Build race query
-    const raceQuery = { 
-      distance: req.params.distance,
-      distanceUnit: req.params.unit
+    console.log(`Fetching fastest times for ${distance}${unit} in year ${year || 'all'} for gender ${gender || 'all'}`);
+    
+    // Build query for races
+    let raceQuery = {
+      distance: parseInt(distance),
+      distanceUnit: unit
     };
     
-    // Add year filter if provided
     if (year) {
-      const startDate = new Date(`${year}-01-01`);
-      const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
-      raceQuery.date = { $gte: startDate, $lte: endDate };
+      raceQuery.date = {
+        $gte: new Date(`${year}-01-01`),
+        $lt: new Date(`${parseInt(year) + 1}-01-01`)
+      };
     }
     
-    // Find races with the specified distance and unit
-    const races = await Race.find(raceQuery);
+    // Find races matching the criteria
+    const races = await Race.find(raceQuery).sort({ date: -1 });
+    
+    if (races.length === 0) {
+      return res.json([]);
+    }
     
     const raceIds = races.map(race => race._id);
     
-    // Get results for these races - first try Result documents
+    // Build athlete query for gender filtering
+    let athleteQuery = {};
+    if (gender && gender !== 'all') {
+      athleteQuery.gender = gender;
+    }
+    
+    // Try to find Result documents first
     let results = await Result.find({ race: { $in: raceIds } })
-      .populate('athlete', 'name country isBanned')
-      .populate('race', 'name date location distance distanceUnit')
+      .populate({
+        path: 'athlete',
+        match: athleteQuery
+      })
+      .populate('race')
       .sort({ finishTime: 1 })
-      .limit(100);
+      .limit(200); // Get more to account for gender filtering
+    
+    // Filter out results where athlete didn't match gender criteria
+    results = results.filter(result => result.athlete);
     
     // If no Result documents, use embedded results from races
     if (results.length === 0) {
@@ -210,12 +229,19 @@ router.get('/fastest/:distance/:unit', async (req, res) => {
       for (const race of races) {
         if (race.results && race.results.length > 0) {
           race.results.forEach(result => {
+            // Skip if gender filter doesn't match
+            if (gender && gender !== 'all' && result.athlete?.gender !== gender) {
+              return;
+            }
+            
             allResults.push({
               _id: result._id || `embedded-${race._id}-${result.position}`,
               athlete: {
                 name: result.athlete?.name || result.athleteName || 'Unknown',
                 country: result.athlete?.country || result.athleteCountry || 'Unknown',
-                isBanned: result.athlete?.isBanned || false
+                gender: result.athlete?.gender || 'Unknown',
+                isBanned: result.athlete?.isBanned || false,
+                isProvisionallyBanned: result.athlete?.isProvisionallyBanned || false
               },
               race: {
                 _id: race._id,
@@ -237,12 +263,15 @@ router.get('/fastest/:distance/:unit', async (req, res) => {
       results = allResults
         .sort((a, b) => a.finishTime - b.finishTime)
         .slice(0, 100);
+    } else {
+      // Limit results from database query
+      results = results.slice(0, 100);
     }
     
     res.json(results);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+  } catch (error) {
+    console.error('Error fetching fastest times:', error);
+    res.status(500).json({ error: 'Failed to fetch fastest times' });
   }
 });
 

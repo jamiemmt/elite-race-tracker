@@ -10,9 +10,10 @@ const FastestTimes = () => {
   const [error, setError] = useState(null);
   
   // Filter states
-  const [selectedEvent, setSelectedEvent] = useState('');
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [showBanned, setShowBanned] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState('42195m');
+  const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedGender, setSelectedGender] = useState('Male');
+  const [showBannedOnly, setShowBannedOnly] = useState(false);
   const [availableEvents, setAvailableEvents] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
   
@@ -72,35 +73,38 @@ const FastestTimes = () => {
     fetchRaces();
   }, []);
 
-  useEffect(() => {
-    const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
       if (!selectedEvent) return;
       
+      setLoading(true);
+      setError(null);
+      
       try {
-        setLoading(true);
-        
-        // Parse distance and unit from selectedEvent
-        const [distance, unit] = selectedEvent.split(' ');
-        
-        // Fetch results based on filter
-        const endpoint = showBanned 
-          ? `/api/results/fastest/${distance}/${unit}`
-          : `/api/results/fastest-clean/${distance}/${unit}`;
-        
-        const res = await axios.get(endpoint, {
-          params: { year: year }
+        const [distance, unit] = selectedEvent.match(/^(\d+(?:\.\d+)?)([a-z]+)$/).slice(1);
+        const response = await axios.get(`/api/results/fastest/${distance}/${unit}`, {
+          params: { year: selectedYear, gender: selectedGender }
         });
-        setResults(res.data);
-        setLoading(false);
+        
+        let filteredResults = response.data;
+        
+        if (showBannedOnly) {
+          filteredResults = filteredResults.filter(result => 
+            result.athlete && (result.athlete.isBanned || result.athlete.isProvisionallyBanned)
+          );
+        }
+        
+        setResults(filteredResults);
       } catch (err) {
-        setError('Failed to fetch results. Please try again later.');
-        setLoading(false);
         console.error('Error fetching results:', err);
+        setError('Failed to load fastest times');
+      } finally {
+        setLoading(false);
       }
-    };
+    }, [selectedEvent, selectedYear, selectedGender, showBannedOnly]);
 
+  useEffect(() => {
     fetchResults();
-  }, [selectedEvent, year, showBanned]);
+  }, [selectedEvent, selectedYear, selectedGender, showBannedOnly, fetchResults]);
 
 
   const exportToCsv = () => {
@@ -111,31 +115,50 @@ const FastestTimes = () => {
       ...results.map((result, index) => {
         return [
           index + 1,
-          result.athlete.name,
-          result.athlete.country,
-          result.race.name,
+          `"${result.athlete.name}"`,
+          `"${result.athlete.country}"`,
+          `"${result.race.name}"`,
           new Date(result.race.date).toLocaleDateString(),
           result.formattedTime,
-          result.athlete.isBanned ? 'BANNED' : 'Clean'
+          result.athlete.isBanned ? 'Banned' : 'Clean'
         ].join(',');
       })
-    ].join('\\n');
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `fastest-times-${selectedEvent.replace(' ', '')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fastest-times-${selectedEvent}-${selectedYear}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+        <p className="mt-3">Loading fastest times...</p>
+      </Container>
+    );
+  }
 
   return (
     <Container>
-      <h1 className="page-header">Fastest Times</h1>
-      
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1 className="page-header">
+          <FaTrophy className="me-2 text-warning" />
+          Fastest Times
+        </h1>
+        {results.length > 0 && (
+          <Button variant="outline-secondary" onClick={exportToCsv}>
+            <FaDownload className="me-1" /> Export CSV
+          </Button>
+        )}
+      </div>
+
       {error && <Alert variant="danger">{error}</Alert>}
       
       <Card className="mb-4">
@@ -146,88 +169,82 @@ const FastestTimes = () => {
         </Card.Header>
         <Card.Body>
           <Row>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Year</Form.Label>
-                <Form.Select 
-                  value={year} 
-                  onChange={(e) => setYear(parseInt(e.target.value))}
-                >
-                  {availableYears.map(yr => (
-                    <option key={yr} value={yr}>{yr}</option>
-                  ))}
-                  {availableYears.length === 0 && (
-                    <option value="">No years available</option>
-                  )}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Event</Form.Label>
-                <Form.Select 
-                  value={selectedEvent} 
-                  onChange={(e) => setSelectedEvent(e.target.value)}
-                  disabled={availableEvents.length === 0}
-                >
-                  {availableEvents.map(event => (
-                    <option key={event} value={event}>{event}</option>
-                  ))}
-                  {availableEvents.length === 0 && (
-                    <option value="">No races available</option>
-                  )}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Athlete Status</Form.Label>
-                <div>
-                  <Form.Check 
-                    type="switch"
-                    id="show-banned-switch"
-                    label="Show Banned Athletes"
-                    checked={showBanned}
-                    onChange={() => setShowBanned(!showBanned)}
-                  />
-                </div>
-              </Form.Group>
-            </Col>
-          </Row>
-          
-          {results.length > 0 && (
-            <div className="text-end">
-              <Button variant="outline-secondary" onClick={exportToCsv}>
-                <FaDownload className="me-1" /> Export to CSV
-              </Button>
+            <div className="col-md-2">
+              <label htmlFor="yearSelect" className="form-label">Year</label>
+              <select 
+                id="yearSelect"
+                className="form-select" 
+                value={selectedYear} 
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
             </div>
-          )}
+            
+            <div className="col-md-2">
+              <label htmlFor="genderSelect" className="form-label">Gender</label>
+              <select 
+                id="genderSelect"
+                className="form-select" 
+                value={selectedGender} 
+                onChange={(e) => setSelectedGender(e.target.value)}
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            
+            <div className="col-md-4">
+              <label htmlFor="eventSelect" className="form-label">Event</label>
+              <select 
+                id="eventSelect"
+                className="form-select" 
+                value={selectedEvent} 
+                onChange={(e) => setSelectedEvent(e.target.value)}
+                disabled={availableEvents.length === 0}
+              >
+                {availableEvents.map(event => (
+                  <option key={event} value={event}>{event}</option>
+                ))}
+                {availableEvents.length === 0 && (
+                  <option value="">No races available</option>
+                )}
+              </select>
+            </div>
+            
+            <div className="col-md-4">
+              <label className="form-label">Athlete Status</label>
+              <div className="form-check form-switch">
+                <input 
+                  className="form-check-input"
+                  type="checkbox"
+                  id="show-banned-switch"
+                  checked={showBannedOnly}
+                  onChange={(e) => setShowBannedOnly(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="show-banned-switch">
+                  Show Banned/Suspended Athletes Only
+                </label>
+              </div>
+            </div>
+          </Row>
         </Card.Body>
       </Card>
-      
-      {loading ? (
-        <div className="text-center my-5">
-          <Spinner animation="border" role="status" variant="primary">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <p className="mt-2">Loading fastest times...</p>
-        </div>
-      ) : results.length > 0 ? (
+
+      {results.length > 0 ? (
         <Card>
           <Card.Header>
             <h5 className="mb-0">
-              <FaRunning className="me-2" /> 
-              Fastest Times: {selectedEvent} ({year})
-              {!showBanned && ' (Clean Athletes Only)'}
+              Fastest Times for {selectedEvent} ({results.length} results)
             </h5>
           </Card.Header>
           <Card.Body className="p-0">
-            <Table striped bordered hover responsive className="mb-0">
-              <thead>
+            <Table responsive striped hover>
+              <thead className="table-dark">
                 <tr>
-                  <th>#</th>
+                  <th>Rank</th>
                   <th>Athlete</th>
                   <th>Country</th>
                   <th>Race</th>
@@ -239,14 +256,15 @@ const FastestTimes = () => {
                 {results.map((result, index) => (
                   <tr 
                     key={result._id}
-                    className={result.athlete.isBanned ? 'banned-row' : ''}
+                    className={result.athlete.isBanned || result.athlete.isProvisionallyBanned ? 'banned-row' : ''}
                   >
                     <td>{index + 1}</td>
                     <td>
                       <Link to={`/athletes/${result.athlete._id}`}>
-                        <span className={result.athlete.isBanned ? 'banned' : ''}>
+                        <span className={result.athlete.isBanned || result.athlete.isProvisionallyBanned ? 'banned' : ''}>
                           {result.athlete.name}
                           {result.athlete.isBanned && ' (BANNED)'}
+                          {result.athlete.isProvisionallyBanned && ' (PROVISIONAL)'}
                         </span>
                       </Link>
                     </td>

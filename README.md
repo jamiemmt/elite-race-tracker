@@ -1,4 +1,4 @@
-# Elite Race Tracker
+# Clean So Far
 
 A web application for tracking elite race finish times with functionality to mark banned athletes.
 

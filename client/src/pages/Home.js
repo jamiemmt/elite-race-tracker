@@ -7,7 +7,7 @@ const Home = () => {
   return (
     <Container>
       <div className="jumbotron bg-light p-5 rounded mb-4">
-        <h1 className="display-4">Elite Race Tracker</h1>
+        <h1 className="display-4 fw-bold mb-4">Clean So Far</h1>
         <p className="lead">
           Track the fastest finish times in elite races and easily identify athletes who have served bans.
         </p>

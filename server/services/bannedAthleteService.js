@@ -11,6 +11,8 @@ class BannedAthleteService {
   constructor() {
     this.tempDir = path.join(__dirname, '../temp');
     this.aiuPdfUrl = 'https://www.athleticsintegrity.org/downloads/pdfs/disciplinary-process/en/Global-List-AUG_25.pdf';
+    this.aiuProvisionalUrl = 'https://www.athleticsintegrity.org/disciplinary-process/provisional-suspensions-in-force';
+    this.aiuFirstInstanceUrl = 'https://www.athleticsintegrity.org/disciplinary-process/first-instance-decisions';
     
     // Known banned athletes from Olympic medal stripping and major doping cases
     this.knownBannedAthletes = [
@@ -47,6 +49,110 @@ class BannedAthleteService {
    */
   getKnownBannedAthletes() {
     return this.knownBannedAthletes;
+  }
+
+  /**
+   * Parse AIU provisional suspensions web page
+   */
+  async parseProvisionalSuspensions() {
+    try {
+      console.log('Fetching AIU provisional suspensions...');
+      
+      const response = await axios.get(this.aiuProvisionalUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; CleanSoFar/1.0)'
+        }
+      });
+
+      const provisionalAthletes = this.extractAthletesFromHtml(response.data, 'provisional');
+      console.log(`Found ${provisionalAthletes.length} provisionally suspended athletes`);
+      return provisionalAthletes;
+      
+    } catch (error) {
+      console.error('Error fetching provisional suspensions:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Parse AIU first instance decisions web page
+   */
+  async parseFirstInstanceDecisions() {
+    try {
+      console.log('Fetching AIU first instance decisions...');
+      
+      const response = await axios.get(this.aiuFirstInstanceUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; CleanSoFar/1.0)'
+        }
+      });
+
+      const firstInstanceAthletes = this.extractAthletesFromHtml(response.data, 'first_instance');
+      console.log(`Found ${firstInstanceAthletes.length} first instance decision athletes`);
+      return firstInstanceAthletes;
+      
+    } catch (error) {
+      console.error('Error fetching first instance decisions:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Extract athlete information from AIU HTML pages
+   */
+  extractAthletesFromHtml(html, banStatus) {
+    const athletes = [];
+    
+    try {
+      // Look for table rows containing athlete data
+      const tableRowRegex = /<tr[^>]*>(.*?)<\/tr>/gs;
+      const cellRegex = /<td[^>]*>(.*?)<\/td>/gs;
+      
+      let match;
+      while ((match = tableRowRegex.exec(html)) !== null) {
+        const rowHtml = match[1];
+        const cells = [];
+        
+        let cellMatch;
+        while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+          // Clean HTML tags and decode entities
+          const cellText = cellMatch[1]
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .trim();
+          cells.push(cellText);
+        }
+        
+        // Skip header rows and empty rows
+        if (cells.length >= 3 && !cells[0].toLowerCase().includes('name')) {
+          const name = cells[0];
+          const country = cells[1];
+          const violation = cells[2] || 'Various violations';
+          
+          if (name && country && name.length > 1) {
+            athletes.push({
+              name: this.formatName(name),
+              country: country.toUpperCase(),
+              source: 'AIU Web',
+              agency: 'AIU',
+              banType: violation,
+              reason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
+              dateDetected: new Date().getFullYear().toString(),
+              banStatus: banStatus
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing HTML:', error.message);
+    }
+    
+    return athletes;
   }
 
   /**
@@ -153,25 +259,6 @@ class BannedAthleteService {
   }
 
   /**
-   * Get all banned athletes from multiple sources
-   */
-  async getAllBannedAthletes() {
-    const aiuAthletes = await this.downloadAndParseAiuList();
-    const allBanned = [...aiuAthletes, ...this.knownBannedAthletes];
-    
-    // Remove duplicates based on name and country
-    const uniqueBanned = allBanned.filter((athlete, index, self) => 
-      index === self.findIndex(a => 
-        a.name.toLowerCase() === athlete.name.toLowerCase() && 
-        a.country === athlete.country
-      )
-    );
-    
-    console.log(`Total unique banned athletes: ${uniqueBanned.length}`);
-    return uniqueBanned;
-  }
-
-  /**
    * Update athlete ban status in database using known list only
    */
   async updateAthleteBanStatusFromKnownList() {
@@ -191,8 +278,18 @@ class BannedAthleteService {
         });
         
         for (const athlete of athletes) {
-          if (!athlete.isBanned) {
-            athlete.isBanned = true;
+          const needsUpdate = !athlete.isBanned && !athlete.isProvisionallyBanned;
+          
+          if (needsUpdate) {
+            // Set ban status based on type
+            if (bannedAthlete.banStatus === 'provisional') {
+              athlete.isProvisionallyBanned = true;
+              athlete.banStatus = 'provisional';
+            } else {
+              athlete.isBanned = true;
+              athlete.banStatus = bannedAthlete.banStatus || 'permanent';
+            }
+            
             athlete.banReason = bannedAthlete.reason;
             athlete.banSource = bannedAthlete.source;
             athlete.banAgency = bannedAthlete.agency;
@@ -200,7 +297,9 @@ class BannedAthleteService {
             athlete.banDateDetected = bannedAthlete.dateDetected;
             await athlete.save();
             updatedCount++;
-            console.log(`Marked ${athlete.name} (${athlete.country}) as banned by ${bannedAthlete.agency}`);
+            
+            const statusText = bannedAthlete.banStatus === 'provisional' ? 'provisionally suspended' : 'banned';
+            console.log(`Marked ${athlete.name} (${athlete.country}) as ${statusText} by ${bannedAthlete.agency}`);
           }
         }
       }
