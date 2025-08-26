@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Table, Form, Row, Col, Card, Button, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Card, Table, Alert, Spinner, Button, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaFilter, FaRunning, FaDownload } from 'react-icons/fa';
+import { FaFilter, FaRunning, FaDownload, FaTrophy } from 'react-icons/fa';
 import axios from 'axios';
 
 const FastestTimes = () => {
@@ -45,16 +45,14 @@ const FastestTimes = () => {
         setAvailableEvents(availableEventsArray);
         
         // Extract unique years
-        const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))]
-          .sort((a, b) => b - a); // Sort descending (newest first)
-        setAvailableYears(uniqueYears);
+        const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))].sort((a, b) => b - a);
+        setAvailableYears(uniqueYears.map(year => year.toString()));
         
-        // Set default year to current year if available, otherwise most recent
         const currentYear = new Date().getFullYear();
         if (uniqueYears.includes(currentYear)) {
-          setYear(currentYear);
+          setSelectedYear(currentYear.toString());
         } else if (uniqueYears.length > 0) {
-          setYear(uniqueYears[0]);
+          setSelectedYear(uniqueYears[0].toString());
         }
         
         // Set default event if available
@@ -102,7 +100,17 @@ const FastestTimes = () => {
       }
     }, [selectedEvent, selectedYear, selectedGender, showBannedOnly]);
 
-  useEffect(() => {
+    Compiled with problems:
+    ×
+    ERROR
+    [eslint] 
+    src/pages/FastestTimes.js
+      Line 55:11:   'setYear' is not defined      no-undef
+      Line 57:11:   'setYear' is not defined      no-undef
+      Line 76:24:   'useCallback' is not defined  no-undef
+      Line 152:12:  'FaTrophy' is not defined     react/jsx-no-undef
+    
+    Search for the keywords to learn more about each error.
     fetchResults();
   }, [selectedEvent, selectedYear, selectedGender, showBannedOnly, fetchResults]);
 
