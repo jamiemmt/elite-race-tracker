@@ -10,8 +10,7 @@ const FastestTimes = () => {
   const [error, setError] = useState(null);
   
   // Filter states
-  const [distance, setDistance] = useState('');
-  const [unit, setUnit] = useState('m');
+  const [selectedDistance, setSelectedDistance] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
   const [showBanned, setShowBanned] = useState(true);
   const [availableDistances, setAvailableDistances] = useState([]);
@@ -29,23 +28,20 @@ const FastestTimes = () => {
       try {
         const res = await axios.get('/api/races');
         
-        // Extract unique distances with their units
-        const uniqueDistances = {};
+        // Extract unique distance combinations
+        const uniqueDistances = new Set();
         res.data.forEach(race => {
-          const key = race.distanceUnit;
-          if (!uniqueDistances[key]) {
-            uniqueDistances[key] = new Set();
-          }
-          uniqueDistances[key].add(race.distance);
+          uniqueDistances.add(`${race.distance} ${race.distanceUnit}`);
         });
         
-        // Convert to array and sort
-        const availableDistancesObj = {};
-        Object.keys(uniqueDistances).forEach(unit => {
-          availableDistancesObj[unit] = [...uniqueDistances[unit]].sort((a, b) => a - b);
+        // Convert to array and sort by distance value
+        const availableDistancesArray = [...uniqueDistances].sort((a, b) => {
+          const aValue = parseFloat(a.split(' ')[0]);
+          const bValue = parseFloat(b.split(' ')[0]);
+          return aValue - bValue;
         });
         
-        setAvailableDistances(availableDistancesObj);
+        setAvailableDistances(availableDistancesArray);
         
         // Extract unique years
         const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))]
@@ -61,15 +57,8 @@ const FastestTimes = () => {
         }
         
         // Set default distance if available
-        if (availableDistancesObj.m && availableDistancesObj.m.length > 0) {
-          setDistance(availableDistancesObj.m[0].toString());
-          setUnit('m');
-        } else if (availableDistancesObj.km && availableDistancesObj.km.length > 0) {
-          setDistance(availableDistancesObj.km[0].toString());
-          setUnit('km');
-        } else if (availableDistancesObj.miles && availableDistancesObj.miles.length > 0) {
-          setDistance(availableDistancesObj.miles[0].toString());
-          setUnit('miles');
+        if (availableDistancesArray.length > 0) {
+          setSelectedDistance(availableDistancesArray[0]);
         }
         
         setLoading(false);
@@ -85,10 +74,13 @@ const FastestTimes = () => {
 
   useEffect(() => {
     const fetchResults = async () => {
-      if (!distance) return;
+      if (!selectedDistance) return;
       
       try {
         setLoading(true);
+        
+        // Parse distance and unit from selectedDistance
+        const [distance, unit] = selectedDistance.split(' ');
         
         // Fetch results based on filter
         const endpoint = showBanned 
@@ -108,19 +100,8 @@ const FastestTimes = () => {
     };
 
     fetchResults();
-  }, [distance, unit, year, showBanned]);
+  }, [selectedDistance, year, showBanned]);
 
-  const handleUnitChange = (e) => {
-    const newUnit = e.target.value;
-    setUnit(newUnit);
-    
-    // Reset distance when unit changes
-    if (availableDistances[newUnit] && availableDistances[newUnit].length > 0) {
-      setDistance(availableDistances[newUnit][0].toString());
-    } else {
-      setDistance('');
-    }
-  };
 
   const exportToCsv = () => {
     // Create CSV content
@@ -145,7 +126,7 @@ const FastestTimes = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `fastest-times-${distance}${unit}.csv`);
+    link.setAttribute('download', `fastest-times-${selectedDistance.replace(' ', '')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -165,7 +146,7 @@ const FastestTimes = () => {
         </Card.Header>
         <Card.Body>
           <Row>
-            <Col md={3}>
+            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Year</Form.Label>
                 <Form.Select 
@@ -182,39 +163,25 @@ const FastestTimes = () => {
               </Form.Group>
             </Col>
             
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Distance Unit</Form.Label>
-                <Form.Select 
-                  value={unit} 
-                  onChange={handleUnitChange}
-                >
-                  <option value="m">Meters (m)</option>
-                  <option value="km">Kilometers (km)</option>
-                  <option value="miles">Miles</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            
-            <Col md={3}>
+            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Distance</Form.Label>
                 <Form.Select 
-                  value={distance} 
-                  onChange={(e) => setDistance(e.target.value)}
-                  disabled={!availableDistances[unit] || availableDistances[unit].length === 0}
+                  value={selectedDistance} 
+                  onChange={(e) => setSelectedDistance(e.target.value)}
+                  disabled={availableDistances.length === 0}
                 >
-                  {availableDistances[unit] && availableDistances[unit].map(dist => (
+                  {availableDistances.map(dist => (
                     <option key={dist} value={dist}>{dist}</option>
                   ))}
-                  {(!availableDistances[unit] || availableDistances[unit].length === 0) && (
+                  {availableDistances.length === 0 && (
                     <option value="">No races available</option>
                   )}
                 </Form.Select>
               </Form.Group>
             </Col>
             
-            <Col md={3}>
+            <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Athlete Status</Form.Label>
                 <div>
@@ -252,7 +219,7 @@ const FastestTimes = () => {
           <Card.Header>
             <h5 className="mb-0">
               <FaRunning className="me-2" /> 
-              Fastest Times: {distance} {unit} ({year})
+              Fastest Times: {selectedDistance} ({year})
               {!showBanned && ' (Clean Athletes Only)'}
             </h5>
           </Card.Header>
@@ -301,7 +268,7 @@ const FastestTimes = () => {
         </Card>
       ) : (
         <Alert variant="info">
-          No results found for {distance} {unit}. Try selecting a different distance or adding race results.
+          No results found for {selectedDistance}. Try selecting a different distance or adding race results.
         </Alert>
       )}
     </Container>
