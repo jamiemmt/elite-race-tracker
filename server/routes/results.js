@@ -176,11 +176,23 @@ router.get('/athlete/:athleteId', async (req, res) => {
 // Get fastest times for a specific race distance
 router.get('/fastest/:distance/:unit', async (req, res) => {
   try {
-    // Find races with the specified distance and unit
-    const races = await Race.find({ 
+    const { year } = req.query;
+    
+    // Build race query
+    const raceQuery = { 
       distance: req.params.distance,
       distanceUnit: req.params.unit
-    });
+    };
+    
+    // Add year filter if provided
+    if (year) {
+      const startDate = new Date(`${year}-01-01`);
+      const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
+      raceQuery.date = { $gte: startDate, $lte: endDate };
+    }
+    
+    // Find races with the specified distance and unit
+    const races = await Race.find(raceQuery);
     
     const raceIds = races.map(race => race._id);
     
@@ -201,11 +213,23 @@ router.get('/fastest/:distance/:unit', async (req, res) => {
 // Get fastest times excluding banned athletes
 router.get('/fastest-clean/:distance/:unit', async (req, res) => {
   try {
-    // Find races with the specified distance and unit
-    const races = await Race.find({ 
+    const { year } = req.query;
+    
+    // Build race query
+    const raceQuery = { 
       distance: req.params.distance,
       distanceUnit: req.params.unit
-    });
+    };
+    
+    // Add year filter if provided
+    if (year) {
+      const startDate = new Date(`${year}-01-01`);
+      const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
+      raceQuery.date = { $gte: startDate, $lte: endDate };
+    }
+    
+    // Find races with the specified distance and unit
+    const races = await Race.find(raceQuery);
     
     const raceIds = races.map(race => race._id);
     

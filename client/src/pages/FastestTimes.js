@@ -12,8 +12,10 @@ const FastestTimes = () => {
   // Filter states
   const [distance, setDistance] = useState('');
   const [unit, setUnit] = useState('m');
+  const [year, setYear] = useState(new Date().getFullYear());
   const [showBanned, setShowBanned] = useState(true);
   const [availableDistances, setAvailableDistances] = useState([]);
+  const [availableYears, setAvailableYears] = useState([]);
   
   // Common race distances
   const commonDistances = {
@@ -44,6 +46,19 @@ const FastestTimes = () => {
         });
         
         setAvailableDistances(availableDistancesObj);
+        
+        // Extract unique years
+        const uniqueYears = [...new Set(res.data.map(race => new Date(race.date).getFullYear()))]
+          .sort((a, b) => b - a); // Sort descending (newest first)
+        setAvailableYears(uniqueYears);
+        
+        // Set default year to current year if available, otherwise most recent
+        const currentYear = new Date().getFullYear();
+        if (uniqueYears.includes(currentYear)) {
+          setYear(currentYear);
+        } else if (uniqueYears.length > 0) {
+          setYear(uniqueYears[0]);
+        }
         
         // Set default distance if available
         if (availableDistancesObj.m && availableDistancesObj.m.length > 0) {
@@ -80,7 +95,9 @@ const FastestTimes = () => {
           ? `/api/results/fastest/${distance}/${unit}`
           : `/api/results/fastest-clean/${distance}/${unit}`;
         
-        const res = await axios.get(endpoint);
+        const res = await axios.get(endpoint, {
+          params: { year: year }
+        });
         setResults(res.data);
         setLoading(false);
       } catch (err) {
@@ -91,7 +108,7 @@ const FastestTimes = () => {
     };
 
     fetchResults();
-  }, [distance, unit, showBanned]);
+  }, [distance, unit, year, showBanned]);
 
   const handleUnitChange = (e) => {
     const newUnit = e.target.value;
@@ -148,7 +165,24 @@ const FastestTimes = () => {
         </Card.Header>
         <Card.Body>
           <Row>
-            <Col md={4}>
+            <Col md={3}>
+              <Form.Group className="mb-3">
+                <Form.Label>Year</Form.Label>
+                <Form.Select 
+                  value={year} 
+                  onChange={(e) => setYear(parseInt(e.target.value))}
+                >
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                  {availableYears.length === 0 && (
+                    <option value="">No years available</option>
+                  )}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            
+            <Col md={3}>
               <Form.Group className="mb-3">
                 <Form.Label>Distance Unit</Form.Label>
                 <Form.Select 
@@ -162,7 +196,7 @@ const FastestTimes = () => {
               </Form.Group>
             </Col>
             
-            <Col md={4}>
+            <Col md={3}>
               <Form.Group className="mb-3">
                 <Form.Label>Distance</Form.Label>
                 <Form.Select 
@@ -171,7 +205,7 @@ const FastestTimes = () => {
                   disabled={!availableDistances[unit] || availableDistances[unit].length === 0}
                 >
                   {availableDistances[unit] && availableDistances[unit].map(dist => (
-                    <option key={dist} value={dist}>{dist} {unit}</option>
+                    <option key={dist} value={dist}>{dist}</option>
                   ))}
                   {(!availableDistances[unit] || availableDistances[unit].length === 0) && (
                     <option value="">No races available</option>
@@ -180,14 +214,14 @@ const FastestTimes = () => {
               </Form.Group>
             </Col>
             
-            <Col md={4}>
+            <Col md={3}>
               <Form.Group className="mb-3">
                 <Form.Label>Athlete Status</Form.Label>
                 <div>
                   <Form.Check 
                     type="switch"
                     id="show-banned-switch"
-                    label="Show Banned Athletes (Hidden by Default)"
+                    label="Show Banned Athletes"
                     checked={showBanned}
                     onChange={() => setShowBanned(!showBanned)}
                   />
@@ -218,7 +252,7 @@ const FastestTimes = () => {
           <Card.Header>
             <h5 className="mb-0">
               <FaRunning className="me-2" /> 
-              Fastest Times: {distance} {unit}
+              Fastest Times: {distance} {unit} ({year})
               {!showBanned && ' (Clean Athletes Only)'}
             </h5>
           </Card.Header>
