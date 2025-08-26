@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const BannedAthleteService = require('../services/bannedAthleteService');
 
-const bannedAthleteService = new BannedAthleteService();
+// Simple test endpoint
+router.get('/test', (req, res) => {
+  res.json({ message: 'Banned athletes API is working', timestamp: new Date().toISOString() });
+});
 
 // Get list of banned athletes (known list only for now)
 router.get('/list', (req, res) => {
   try {
+    // Import service only when needed to avoid initialization issues
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
     // Return just the known banned athletes list for immediate response
     const knownBanned = bannedAthleteService.getKnownBannedAthletes();
     res.json({
@@ -15,13 +21,16 @@ router.get('/list', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching banned athletes:', error);
-    res.status(500).json({ error: 'Failed to fetch banned athletes' });
+    res.status(500).json({ error: 'Failed to fetch banned athletes', details: error.message });
   }
 });
 
 // Update athlete ban status in database (use known list only for now)
 router.post('/update', async (req, res) => {
   try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
     const result = await bannedAthleteService.updateAthleteBanStatusFromKnownList();
     res.json({
       message: 'Athlete ban status updated successfully',
@@ -36,6 +45,9 @@ router.post('/update', async (req, res) => {
 // Check if a specific athlete is banned
 router.get('/check/:name/:country', async (req, res) => {
   try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
     const { name, country } = req.params;
     const isBanned = await bannedAthleteService.isAthleteBanned(name, country);
     res.json({ name, country, isBanned });
@@ -48,6 +60,9 @@ router.get('/check/:name/:country', async (req, res) => {
 // Get ban statistics by agency/source
 router.get('/stats', async (req, res) => {
   try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
     const stats = await bannedAthleteService.getBanStatistics();
     res.json(stats);
   } catch (error) {
@@ -59,6 +74,9 @@ router.get('/stats', async (req, res) => {
 // Get banned athletes from database with source information
 router.get('/database', async (req, res) => {
   try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
     const bannedAthletes = await bannedAthleteService.getBannedAthletesFromDatabase();
     res.json(bannedAthletes);
   } catch (error) {
