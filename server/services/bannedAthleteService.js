@@ -106,18 +106,51 @@ class BannedAthleteService {
     const athletes = [];
     
     try {
-      // Look for table rows containing athlete data
-      const tableRowRegex = /<tr[^>]*>(.*?)<\/tr>/gs;
-      const cellRegex = /<td[^>]*>(.*?)<\/td>/gs;
+      // Look for athlete names in links - AIU pages have athlete names as links
+      const linkRegex = /<a[^>]*href="[^"]*"[^>]*>(.*?)<\/a>/gs;
+      const nameMatches = [];
       
-      let match;
-      while ((match = tableRowRegex.exec(html)) !== null) {
-        const rowHtml = match[1];
+      let linkMatch;
+      while ((linkMatch = linkRegex.exec(html)) !== null) {
+        const linkText = linkMatch[1]
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .trim();
+        
+        // Check if this looks like an athlete name (contains letters, not just dates/numbers)
+        if (linkText && 
+            linkText.length > 3 && 
+            /[a-zA-Z]/.test(linkText) && 
+            !linkText.match(/^\d{2}\/\d{2}\/\d{4}$/) && // Not a date
+            !linkText.match(/^(DQ|results|since|from|until)$/i) && // Not common text
+            !linkText.includes('bit.ly') &&
+            !linkText.includes('Decision') &&
+            !linkText.includes('pdf')) {
+          nameMatches.push(linkText);
+        }
+      }
+      
+      // Also try to extract from table structure with better parsing
+      const tableRowRegex = /<tr[^>]*>(.*?)<\/tr>/gs;
+      let rowMatch;
+      while ((rowMatch = tableRowRegex.exec(html)) !== null) {
+        const rowHtml = rowMatch[1];
+        
+        // Skip header rows
+        if (rowHtml.toLowerCase().includes('<th') || 
+            rowHtml.toLowerCase().includes('name') ||
+            rowHtml.toLowerCase().includes('athlete')) {
+          continue;
+        }
+        
+        const cellRegex = /<td[^>]*>(.*?)<\/td>/gs;
         const cells = [];
         
         let cellMatch;
         while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-          // Clean HTML tags and decode entities
           const cellText = cellMatch[1]
             .replace(/<[^>]*>/g, '')
             .replace(/&nbsp;/g, ' ')
@@ -128,31 +161,76 @@ class BannedAthleteService {
           cells.push(cellText);
         }
         
-        // Skip header rows and empty rows
-        if (cells.length >= 3 && !cells[0].toLowerCase().includes('name')) {
-          const name = cells[0];
-          const country = cells[1];
-          const violation = cells[2] || 'Various violations';
-          
-          if (name && country && name.length > 1) {
-            athletes.push({
-              name: this.formatName(name),
-              country: country.toUpperCase(),
-              source: 'AIU Web',
-              agency: 'AIU',
-              banType: violation,
-              reason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
-              dateDetected: new Date().getFullYear().toString(),
-              banStatus: banStatus
-            });
+        // Look for valid athlete data in cells
+        if (cells.length >= 2) {
+          for (let i = 0; i < cells.length - 1; i++) {
+            const potentialName = cells[i];
+            const potentialCountry = cells[i + 1];
+            
+            // Check if this looks like a valid athlete name and country
+            if (potentialName && 
+                potentialCountry &&
+                potentialName.length > 3 &&
+                potentialCountry.length >= 2 &&
+                potentialCountry.length <= 4 &&
+                /[a-zA-Z]/.test(potentialName) &&
+                !potentialName.match(/^\d{2}\/\d{2}\/\d{4}$/) &&
+                potentialCountry.match(/^[A-Z]{2,4}$/)) {
+              
+              nameMatches.push(`${potentialName}|${potentialCountry}`);
+              break;
+            }
           }
         }
       }
+      
+      // Process collected names
+      for (const nameData of nameMatches) {
+        let name, country, violation = 'Various violations';
+        
+        if (nameData.includes('|')) {
+          [name, country] = nameData.split('|');
+        } else {
+          name = nameData;
+          country = 'UNK'; // Unknown country
+        }
+        
+        // Clean up the name
+        name = this.formatName(name);
+        
+        // Skip invalid entries
+        if (!name || 
+            name.length < 3 || 
+            name.match(/^\d/) ||
+            name.toLowerCase().includes('decision') ||
+            name.toLowerCase().includes('results')) {
+          continue;
+        }
+        
+        athletes.push({
+          name: name,
+          country: country.toUpperCase(),
+          source: 'AIU Web',
+          agency: 'AIU',
+          banType: violation,
+          reason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
+          dateDetected: new Date().getFullYear().toString(),
+          banStatus: banStatus
+        });
+      }
+      
+      // Remove duplicates based on name and country
+      const uniqueAthletes = athletes.filter((athlete, index, self) => 
+        index === self.findIndex(a => a.name === athlete.name && a.country === athlete.country)
+      );
+      
+      console.log(`Extracted ${uniqueAthletes.length} unique athletes from ${banStatus} page`);
+      return uniqueAthletes;
+      
     } catch (error) {
       console.error('Error parsing HTML:', error.message);
+      return [];
     }
-    
-    return athletes;
   }
 
   /**
@@ -423,6 +501,45 @@ class BannedAthleteService {
       }));
     } catch (error) {
       console.error('Error fetching banned athletes from database:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up incorrectly parsed AIU entries (dates as names, etc.)
+   */
+  async cleanupInvalidAiuEntries() {
+    try {
+      const Athlete = require('../models/Athlete');
+      
+      // Find and remove entries with invalid names (dates, single letters, etc.)
+      const invalidEntries = await Athlete.find({
+        $or: [
+          { name: { $regex: /^\d{2}\/\d{2}\/\d{4}$/ } }, // Dates as names
+          { name: { $regex: /^\d+$/ } }, // Just numbers
+          { name: { $regex: /^[A-Z]{1,3}$/ } }, // Just country codes
+          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE'] } }, // Known bad entries
+          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA'] } }, // Names in country field
+          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } } // Overly long garbled names
+        ]
+      });
+      
+      const deleteCount = await Athlete.deleteMany({
+        $or: [
+          { name: { $regex: /^\d{2}\/\d{2}\/\d{4}$/ } },
+          { name: { $regex: /^\d+$/ } },
+          { name: { $regex: /^[A-Z]{1,3}$/ } },
+          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE'] } },
+          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA'] } },
+          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }
+        ]
+      });
+      
+      console.log(`Cleaned up ${deleteCount.deletedCount} invalid AIU entries`);
+      return { deletedCount: deleteCount.deletedCount, invalidEntries: invalidEntries.length };
+      
+    } catch (error) {
+      console.error('Error cleaning up invalid AIU entries:', error);
       throw error;
     }
   }

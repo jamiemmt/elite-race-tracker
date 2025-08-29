@@ -85,6 +85,28 @@ router.get('/database', async (req, res) => {
   }
 });
 
+// Clean up invalid AIU entries (dates as names, etc.)
+router.post('/cleanup-invalid', async (req, res) => {
+  try {
+    const BannedAthleteService = require('../services/bannedAthleteService');
+    const bannedAthleteService = new BannedAthleteService();
+    
+    const result = await bannedAthleteService.cleanupInvalidAiuEntries();
+    res.json({
+      success: true,
+      message: 'Invalid AIU entries cleaned up successfully',
+      summary: result
+    });
+  } catch (error) {
+    console.error('Error cleaning up invalid AIU entries:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to clean up invalid AIU entries',
+      details: error.message 
+    });
+  }
+});
+
 // Populate database with all current AIU banned athletes from live sources
 router.post('/populate-aiu', async (req, res) => {
   try {
