@@ -123,12 +123,16 @@ class BannedAthleteService {
         // Check if this looks like an athlete name (contains letters, not just dates/numbers)
         if (linkText && 
             linkText.length > 3 && 
-            /[a-zA-Z]/.test(linkText) && 
-            !linkText.match(/^\d{2}\/\d{2}\/\d{4}$/) && // Not a date
-            !linkText.match(/^(DQ|results|since|from|until)$/i) && // Not common text
+            linkText.length < 50 && // Not too long
+            /^[A-Z][a-zA-Z\s\-'\.]+$/.test(linkText) && // Proper name format
+            !linkText.match(/^\d/) && // Doesn't start with number
+            !linkText.match(/\d{2}\/\d{2}\/\d{4}/) && // No dates
+            !linkText.match(/^(DQ|results|since|from|until|power|of|respect)$/i) && // Not common text
             !linkText.includes('bit.ly') &&
             !linkText.includes('Decision') &&
-            !linkText.includes('pdf')) {
+            !linkText.includes('pdf') &&
+            !linkText.includes('#') &&
+            linkText.split(' ').length <= 5) { // Reasonable number of words
           nameMatches.push(linkText);
         }
       }
@@ -201,9 +205,14 @@ class BannedAthleteService {
         // Skip invalid entries
         if (!name || 
             name.length < 3 || 
+            name.length > 50 ||
             name.match(/^\d/) ||
+            name.match(/\d{2}\/\d{2}\/\d{4}/) ||
+            name.includes('#') ||
             name.toLowerCase().includes('decision') ||
-            name.toLowerCase().includes('results')) {
+            name.toLowerCase().includes('results') ||
+            name.toLowerCase().includes('power') ||
+            !name.match(/^[A-Z][a-zA-Z\s\-'\.]+$/)) {
           continue;
         }
         
@@ -518,9 +527,12 @@ class BannedAthleteService {
           { name: { $regex: /^\d{2}\/\d{2}\/\d{4}$/ } }, // Dates as names
           { name: { $regex: /^\d+$/ } }, // Just numbers
           { name: { $regex: /^[A-Z]{1,3}$/ } }, // Just country codes
-          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE'] } }, // Known bad entries
-          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA'] } }, // Names in country field
-          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } } // Overly long garbled names
+          { name: { $regex: /\d{2}\/\d{2}\/\d{4}/ } }, // Contains dates
+          { name: { $regex: /^#/ } }, // Starts with #
+          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } }, // Known bad entries
+          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } }, // Names in country field
+          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }, // Overly long garbled names
+          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } } // Invalid name format
         ]
       });
       
@@ -529,9 +541,12 @@ class BannedAthleteService {
           { name: { $regex: /^\d{2}\/\d{2}\/\d{4}$/ } },
           { name: { $regex: /^\d+$/ } },
           { name: { $regex: /^[A-Z]{1,3}$/ } },
-          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE'] } },
-          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA'] } },
-          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }
+          { name: { $regex: /\d{2}\/\d{2}\/\d{4}/ } },
+          { name: { $regex: /^#/ } },
+          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } },
+          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } },
+          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } },
+          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } }
         ]
       });
       
