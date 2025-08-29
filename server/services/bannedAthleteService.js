@@ -625,26 +625,46 @@ class BannedAthleteService {
           });
           
           if (existingAthlete) {
-            // Update existing athlete if needed
+            // Update existing athlete with ban information
             let updated = false;
             
-            if (bannedAthlete.banStatus === 'provisional' && !existingAthlete.isProvisionallyBanned) {
-              existingAthlete.isProvisionallyBanned = true;
-              existingAthlete.banStatus = 'provisional';
-              updated = true;
-            } else if (bannedAthlete.banStatus !== 'provisional' && !existingAthlete.isBanned) {
-              existingAthlete.isBanned = true;
-              existingAthlete.banStatus = bannedAthlete.banStatus || 'permanent';
+            if (!existingAthlete.isBanned && bannedAthlete.isBanned) {
+              existingAthlete.isBanned = bannedAthlete.isBanned;
               updated = true;
             }
             
-            // Always update ban details if they're more recent or detailed
-            if (bannedAthlete.source && bannedAthlete.source !== 'Known case') {
-              existingAthlete.banReason = bannedAthlete.reason;
-              existingAthlete.banSource = bannedAthlete.source;
-              existingAthlete.banAgency = bannedAthlete.agency;
+            if (!existingAthlete.isProvisionallyBanned && bannedAthlete.isProvisionallyBanned) {
+              existingAthlete.isProvisionallyBanned = bannedAthlete.isProvisionallyBanned;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banReason && (bannedAthlete.banReason || bannedAthlete.reason)) {
+              existingAthlete.banReason = bannedAthlete.banReason || bannedAthlete.reason;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banSource && (bannedAthlete.banSource || bannedAthlete.source)) {
+              existingAthlete.banSource = bannedAthlete.banSource || bannedAthlete.source;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banAgency && (bannedAthlete.banAgency || bannedAthlete.agency)) {
+              existingAthlete.banAgency = bannedAthlete.banAgency || bannedAthlete.agency;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banType && bannedAthlete.banType) {
               existingAthlete.banType = bannedAthlete.banType;
-              existingAthlete.banDateDetected = bannedAthlete.dateDetected;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banDateDetected && (bannedAthlete.banDateDetected || bannedAthlete.dateDetected)) {
+              existingAthlete.banDateDetected = bannedAthlete.banDateDetected || bannedAthlete.dateDetected;
+              updated = true;
+            }
+            
+            if (!existingAthlete.banStatus && bannedAthlete.banStatus) {
+              existingAthlete.banStatus = bannedAthlete.banStatus;
               updated = true;
             }
             
@@ -669,7 +689,7 @@ class BannedAthleteService {
             const newAthlete = new Athlete({
               name: bannedAthlete.name,
               country: bannedAthlete.country,
-              gender: 'Male', // Default to Male, will be updated when we have more data
+              gender: 'Female', // Default to Female, will be updated when we have more data
               ...updateData
             });
             
