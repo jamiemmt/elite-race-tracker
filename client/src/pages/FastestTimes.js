@@ -263,8 +263,44 @@ const FastestTimes = () => {
                       <Link to={`/athletes/${result.athlete._id}`}>
                         <span className={result.athlete.isBanned || result.athlete.isProvisionallyBanned ? 'banned' : ''}>
                           {result.athlete.name}
-                          {result.athlete.isBanned && ' (BANNED)'}
-                          {result.athlete.isProvisionallyBanned && ' (PROVISIONAL)'}
+                          {(result.athlete.isBanned || result.athlete.isProvisionallyBanned) && (
+                            <div className="banned-athlete-info mt-2">
+                              <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                {result.athlete.isBanned && (
+                                  <Badge variant="danger">
+                                    <FaExclamationTriangle className="me-1" />
+                                    BANNED
+                                  </Badge>
+                                )}
+                                {result.athlete.isProvisionallyBanned && (
+                                  <Badge variant="warning">
+                                    PROVISIONAL
+                                  </Badge>
+                                )}
+                                {result.athlete.banAgency && (
+                                  <Badge variant="secondary">
+                                    {result.athlete.banAgency}
+                                  </Badge>
+                                )}
+                              </div>
+                              {(result.athlete.banReason || result.athlete.banType || result.athlete.banSource) && (
+                                <div className="banned-details small text-muted">
+                                  {result.athlete.banReason && (
+                                    <div><strong>Reason:</strong> {result.athlete.banReason}</div>
+                                  )}
+                                  {result.athlete.banType && result.athlete.banType !== 'Various violations' && (
+                                    <div><strong>Substance/Violation:</strong> {result.athlete.banType}</div>
+                                  )}
+                                  {result.athlete.banSource && (
+                                    <div><strong>Source:</strong> {result.athlete.banSource}</div>
+                                  )}
+                                  {result.athlete.banStatus && (
+                                    <div><strong>Status:</strong> {result.athlete.banStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </span>
                       </Link>
                     </td>

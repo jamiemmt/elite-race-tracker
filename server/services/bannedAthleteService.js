@@ -219,12 +219,14 @@ class BannedAthleteService {
         athletes.push({
           name: name,
           country: country.toUpperCase(),
-          source: 'AIU Web',
-          agency: 'AIU',
+          banSource: 'AIU Web',
+          banAgency: 'AIU',
           banType: violation,
-          reason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
-          dateDetected: new Date().getFullYear().toString(),
-          banStatus: banStatus
+          banReason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
+          banDateDetected: new Date().getFullYear().toString(),
+          banStatus: banStatus,
+          isBanned: banStatus === 'first_instance',
+          isProvisionallyBanned: banStatus === 'provisional'
         });
       }
       
@@ -653,18 +655,22 @@ class BannedAthleteService {
             }
           } else {
             // Create new athlete
+            const updateData = {
+              isBanned: bannedAthlete.isBanned || false,
+              isProvisionallyBanned: bannedAthlete.isProvisionallyBanned || false,
+              banReason: bannedAthlete.banReason || bannedAthlete.reason,
+              banSource: bannedAthlete.banSource || bannedAthlete.source,
+              banAgency: bannedAthlete.banAgency || bannedAthlete.agency,
+              banType: bannedAthlete.banType,
+              banDateDetected: bannedAthlete.banDateDetected || bannedAthlete.dateDetected,
+              banStatus: bannedAthlete.banStatus || 'cleared'
+            };
+            
             const newAthlete = new Athlete({
               name: bannedAthlete.name,
               country: bannedAthlete.country,
               gender: 'Male', // Default to Male, will be updated when we have more data
-              isBanned: bannedAthlete.banStatus !== 'provisional',
-              isProvisionallyBanned: bannedAthlete.banStatus === 'provisional',
-              banReason: bannedAthlete.reason,
-              banSource: bannedAthlete.source,
-              banAgency: bannedAthlete.agency,
-              banType: bannedAthlete.banType,
-              banDateDetected: bannedAthlete.dateDetected,
-              banStatus: bannedAthlete.banStatus || 'permanent'
+              ...updateData
             });
             
             await newAthlete.save();

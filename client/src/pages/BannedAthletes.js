@@ -171,10 +171,9 @@ const BannedAthletes = () => {
                   <th>Name</th>
                   <th>Country</th>
                   <th>Status</th>
-                  <th>Agency</th>
-                  <th>Ban Type</th>
-                  <th>Source</th>
-                  <th>Date Detected</th>
+                  <th>Agency/Source</th>
+                  <th>Ban Details</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,14 +188,37 @@ const BannedAthletes = () => {
                     <td>
                       {getBanStatusBadge(athlete)}
                     </td>
-                    <td>{athlete.banAgency || 'Unknown'}</td>
-                    <td>{athlete.banType || 'Unknown'}</td>
-                    <td>{athlete.banSource || 'Unknown'}</td>
                     <td>
-                      {athlete.banDateDetected 
-                        ? new Date(athlete.banDateDetected).toLocaleDateString()
-                        : 'Unknown'
-                      }
+                      <div>
+                        <strong>{athlete.banAgency || 'Unknown'}</strong>
+                        {athlete.banSource && athlete.banSource !== athlete.banAgency && (
+                          <div className="small text-muted">
+                            Source: {athlete.banSource}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div>
+                        {athlete.banType && athlete.banType !== 'Various violations' && (
+                          <div><strong>Substance:</strong> {athlete.banType}</div>
+                        )}
+                        {athlete.banStatus && (
+                          <div className="small text-muted">
+                            Status: {athlete.banStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </div>
+                        )}
+                        {athlete.banDateDetected && (
+                          <div className="small text-muted">
+                            Detected: {athlete.banDateDetected}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="small">
+                        {athlete.banReason || athlete.reason || 'Not specified'}
+                      </div>
                     </td>
                   </tr>
                 ))}
