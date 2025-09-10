@@ -74,27 +74,34 @@ class DiamondLeagueScheduler {
     console.log(`[${startTime.toISOString()}] Starting ${context}`);
 
     try {
-      // Try sample scraper first (for testing/demo)
-      const sampleResults = await this.runScraper('sampleDiamondLeague', {
-        topN: 20
+      // TEMPORARILY DISABLED - Only use clean scraper
+      // const sampleResults = await this.runScraper('sampleDiamondLeague', {
+      //   topN: 20
+      // });
+
+      // const currentYear = new Date().getFullYear();
+      // const dynamicResults = await this.runScraper('diamondLeagueDynamic', {
+      //   season: currentYear,
+      //   topN: 20
+      // });
+
+      // const staticResults = await this.runScraper('diamondLeague2025', {
+      //   meetingUrls: [
+      //     'https://zurich.diamondleague.com/en/programme-results/',
+      //     'https://brussels.diamondleague.com/en/programme-results/',
+      //     'https://eugene.diamondleague.com/en/programme-results/'
+      //   ],
+      //   topN: 20
+      // });
+
+      // Only run the validated clean scraper
+      const cleanResults = await this.runScraper('diamondLeague2025Clean', {
+        topN: 50
       });
 
-      // Try dynamic scraper for current season
-      const currentYear = new Date().getFullYear();
-      const dynamicResults = await this.runScraper('diamondLeagueDynamic', {
-        season: currentYear,
-        topN: 20
-      });
-
-      // Try static scraper with common meeting URLs
-      const staticResults = await this.runScraper('diamondLeague2025', {
-        meetingUrls: [
-          'https://zurich.diamondleague.com/en/programme-results/',
-          'https://brussels.diamondleague.com/en/programme-results/',
-          'https://eugene.diamondleague.com/en/programme-results/'
-        ],
-        topN: 20
-      });
+      const sampleResults = 0;
+      const dynamicResults = 0; 
+      const staticResults = cleanResults;
 
       const totalResults = sampleResults + dynamicResults + staticResults;
       const duration = (new Date() - startTime) / 1000;
