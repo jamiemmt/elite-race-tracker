@@ -43,7 +43,8 @@ class WorldAthletics2025 extends BaseScraper {
   }
 
   getDistanceUnit(distance) {
-    return distance >= 1000 ? 'km' : 'm';
+    // Track events should generally use meters
+    return 'm';
   }
 
   convertTimeToSeconds(timeStr) {
@@ -165,6 +166,52 @@ class WorldAthletics2025 extends BaseScraper {
     }
   }
 
+  absoluteUrl(u) {
+    if (!u) return null;
+    return u.startsWith('http') ? u : `${this.baseUrl}${u.startsWith('/') ? '' : '/'}${u}`;
+  }
+
+  async fetchDiamondLeagueMeetings(season = 2025) {
+    try {
+      const path = `/competitions/diamond-league/calendar-results?season=${encodeURIComponent(season)}`;
+      const html = await this.fetchHtml(path);
+      const $ = this.parseHtml(html);
+      const meetings = new Set();
+      $('a[href*="/competitions/diamond-league/calendar-results/"]').each((_, a) => {
+        const href = $(a).attr('href') || '';
+        if (/\/competitions\/diamond-league\/calendar-results\/\d+\/result/.test(href)) {
+          meetings.add(this.absoluteUrl(href));
+        }
+      });
+      return Array.from(meetings);
+    } catch (e) {
+      console.error('fetchDiamondLeagueMeetings error:', e.message);
+      return [];
+    }
+  }
+
+  async extractEventResultLinksFromMeeting(meetingUrl) {
+    try {
+      const html = await this.fetchHtml(meetingUrl);
+      const $ = this.parseHtml(html);
+      const links = new Set();
+      // Heuristics: look for links that navigate to discipline results
+      $('a').each((_, a) => {
+        const href = $(a).attr('href') || '';
+        const text = ($(a).text() || '').toLowerCase();
+        if (/results|final|heats|semi|qualification/.test(text) || /\/results\//i.test(href)) {
+          if (/metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(href + ' ' + text)) {
+            links.add(this.absoluteUrl(href));
+          }
+        }
+      });
+      return Array.from(links);
+    } catch (e) {
+      console.error('extractEventResultLinksFromMeeting error:', e.message);
+      return [];
+    }
+  }
+
   generateSampleData(limit = 40) {
     const competitions = [
       { name: 'World Athletics Championships 2025', location: 'Tokyo, Japan', date: new Date('2025-09-13') },
@@ -207,7 +254,7 @@ class WorldAthletics2025 extends BaseScraper {
   }
 
   async scrape(options = {}) {
-    const { competitionUrl, eventUrls = [], allCompetitions = false, topN } = options;
+    const { competitionUrl, eventUrls = [], diamondLeague = false, season = 2025, meetingLimit = 4, allowSample = false } = options;
     try {
       // If specific event URLs provided, scrape them directly
       if (Array.isArray(eventUrls) && eventUrls.length > 0) {
@@ -219,32 +266,37 @@ class WorldAthletics2025 extends BaseScraper {
         return all;
       }
 
+      // If instructed to crawl Diamond League season
+      if (diamondLeague) {
+        const meetings = await this.fetchDiamondLeagueMeetings(season);
+        const pick = meetings.slice(0, Math.max(1, meetingLimit));
+        let all = [];
+        for (const m of pick) {
+          const eventLinks = await this.extractEventResultLinksFromMeeting(m);
+          for (const ev of eventLinks) {
+            const res = await this.getResults(ev);
+            all.push(...res);
+          }
+        }
+        return all;
+      }
+
       // If a specific competition URL is provided, try to detect event links minimally
       if (competitionUrl) {
-        const html = await this.fetchHtml(competitionUrl);
-        const $ = this.parseHtml(html);
-        const links = [];
-        $('a').each((_, a) => {
-          const href = $(a).attr('href') || '';
-          if (/results|final|heats|semi/i.test($(a).text()) || /\/results\//i.test(href)) {
-            if (href && !links.includes(href)) links.push(href);
-          }
-        });
-        const candidateEventUrls = links.filter(u => /metres|100|200|400|800|1500|3000|5000|10000/i.test(u)).slice(0, 12);
+        const eventLinks = await this.extractEventResultLinksFromMeeting(competitionUrl);
         let all = [];
-        for (const u of candidateEventUrls) {
-          const url = u.startsWith('http') ? u : `${this.baseUrl}${u}`;
-          const res = await this.getResults(url);
+        for (const u of eventLinks) {
+          const res = await this.getResults(u);
           all.push(...res);
         }
         return all;
       }
 
-      // Fallback to sample data (respects controller-level topN limiting)
-      return this.generateSampleData(60);
+      // No inputs: return empty or sample per flag
+      return allowSample ? this.generateSampleData(40) : [];
     } catch (e) {
       console.error('WorldAthletics2025 scrape error:', e.message);
-      return this.generateSampleData(40);
+      return allowSample ? this.generateSampleData(20) : [];
     }
   }
 }
