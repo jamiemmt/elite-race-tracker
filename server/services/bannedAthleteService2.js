@@ -914,8 +914,20 @@ class BannedAthleteService {
    * Check if an athlete is banned
    */
   async isAthleteBanned(name, country, options = {}) {
-    const { matchMode = 'cascade', ignoreCountryWhenUnknown = true } = options || {};
-    const all = await this.getAllBannedAthletes();
+    const {
+      matchMode = 'cascade',
+      ignoreCountryWhenUnknown = true,
+      includeProvisional = true,
+      includeFirstInstance = true,
+      includePdf = true,
+      includeKnown = true,
+    } = options || {};
+    const all = await this.getAllBannedAthletes({
+      includeProvisional,
+      includeFirstInstance,
+      includePdf,
+      includeKnown,
+    });
 
     const c = this.normalizeCountryCode(country || 'UNK');
     const nameLower = String(name || '').toLowerCase();
