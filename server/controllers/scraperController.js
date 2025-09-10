@@ -37,10 +37,15 @@ exports.runScraper = async (req, res) => {
     }
 
     // Run the scraper
-    const results = await scrapers.scrapeResults(source, options || {});
+    const scrapeOptions = options || {};
+    if (scrapeOptions.topN == null) {
+      scrapeOptions.topN = parseInt(process.env.SCRAPER_TOP_N || '20', 10);
+    }
+
+    const results = await scrapers.scrapeResults(source, scrapeOptions);
     
-    // Process and save the results
-    const summary = await processResults(results, source);
+    // Process and save the results (respecting topN per event)
+    const summary = await processResults(results, source, scrapeOptions);
     
     return res.status(200).json({
       success: true,
@@ -61,7 +66,8 @@ exports.runScraper = async (req, res) => {
  * @param {string} source - Source of the results
  * @returns {Promise<Object>} - Summary of the processing
  */
-async function processResults(results, source) {
+async function processResults(results, source, options = {}) {
+  const topN = parseInt(options.topN || process.env.SCRAPER_TOP_N || '20', 10);
   const summary = {
     totalResults: results.length,
     processedResults: 0,
@@ -69,12 +75,43 @@ async function processResults(results, source) {
     newRaces: 0,
     newResults: 0,
     updatedBanStatus: 0,
+    limitedPerEvent: topN,
     errors: []
   };
 
   // Special handling for banned athletes list
   if (source === 'athleticsintegrity') {
     return await processBannedAthletes(results, summary);
+  }
+
+  // Limit results to topN per event (race) before processing
+  try {
+    const buckets = new Map();
+    const keyOf = (r) => {
+      const race = r.race || {};
+      const dateStr = race.date ? new Date(race.date).toISOString().slice(0,10) : '';
+      return [race.name || 'Unknown', dateStr, race.distance || 0, race.distanceUnit || 'm', race.gender || 'Mixed'].join('|');
+    };
+    for (const r of results) {
+      const k = keyOf(r);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(r);
+    }
+    const limited = [];
+    for (const [_k, arr] of buckets) {
+      arr.sort((a, b) => {
+        const pa = (a.result?.position ?? a.position ?? Infinity);
+        const pb = (b.result?.position ?? b.position ?? Infinity);
+        if (isFinite(pa) && isFinite(pb)) return pa - pb;
+        const ta = (a.result?.time ?? a.finishTime ?? Infinity);
+        const tb = (b.result?.time ?? b.finishTime ?? Infinity);
+        return ta - tb;
+      });
+      limited.push(...arr.slice(0, Math.max(1, topN)));
+    }
+    results = limited;
+  } catch (e) {
+    console.warn('topN pre-processing failed, proceeding without limiting:', e.message);
   }
 
   // Process race results
