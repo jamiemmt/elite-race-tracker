@@ -32,6 +32,7 @@ app.use('/api/race-results', raceResultsRoutes);
 app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
 app.use('/api/banned-athletes', bannedAthleteRoutes);
 app.use('/api/scheduler', require('./routes/scheduler'));
+app.use('/api/cleanup', require('./routes/cleanup'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
