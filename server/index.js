@@ -35,6 +35,7 @@ app.use('/api/scheduler', require('./routes/scheduler'));
 app.use('/api/cleanup', require('./routes/cleanup'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/clean-results', require('./routes/cleanResults'));
+app.use('/api/reset-diamond-league', require('./routes/resetDiamondLeague'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {

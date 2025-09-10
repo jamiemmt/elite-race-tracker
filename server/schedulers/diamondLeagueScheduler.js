@@ -94,8 +94,8 @@ class DiamondLeagueScheduler {
       //   topN: 20
       // });
 
-      // Only run the validated clean scraper
-      const cleanResults = await this.runScraper('diamondLeague2025Clean', {
+      // Only run the corrected scraper (Jakob removed)
+      const cleanResults = await this.runScraper('diamondLeague2025Corrected', {
         topN: 50
       });
 
