@@ -112,11 +112,22 @@ class BannedAthleteService {
       const $ = cheerio.load(html);
 
       const STOPWORDS = new Set([
-        'Contact Us','Contact','Know The Rules','Understand The Rules Of Governance','Understand The Anti-doping Rules',
-        'Privacy Policy','Cookie Policy','Terms','AIU Call Room','AIU','Home','Search','News','Education','About',
-        'Integrity','Power Of Respect','Global List','Provisional Suspensions','First Instance Decisions','Resources',
-        'Events','Rankings','Media','What We Do','Who We Are','Governance','Anti-doping','Rules','Regulations',
-        'Decision','Decisions','Appeal','Appeals','Download','Downloads'
+        'Contact Us','Contact','Know The Rules','Know The Process','Know us','Know Us','Understand The Rules Of Governance','Understand The Anti-doping Rules',
+        'Privacy Policy','Cookie Policy','Cookies','Terms','AIU Call Room','AIU','Home','Search','News','Education','About',
+        'Integrity','Power Of Respect','Global List','Global List Of Ineligible Persons','Provisional Suspensions','First Instance Decisions','Resources',
+        'Anti-doping E-learning Resources','Events','Rankings','Media','What We Do','Who We Are','Governance','Anti-doping','Rules','Regulations',
+        'Decision','Decisions','Appeal','Appeals','Download','Downloads','Join Us','Competition Manipulation','Knowledge Centre','Data Protection'
+      ]);
+
+      const STOP_SUBSTRINGS = [
+        'anti-doping','aiu call room','competition manipulation','data protection','cookie','cookies','global list of ineligible persons',
+        'join us','know the','know us','knowledge centre','power of respect','privacy policy','terms','download','appeal','decision',
+        'first instance','provisional suspensions','aiu','view current vacancies','whereabouts requirements','whereabouts failures','world athletics'
+      ];
+      const STOP_TOKENS = new Set([
+        'the','of','for','and','anti','doping','global','list','resources','know','join','room','call','manipulation','competition',
+        'centre','center','policy','privacy','terms','contact','cookies','data','protection','appeal','appeals','decision','decisions',
+        'vacancies','news','media','what','who','we','are','aiu','world','athletics','understand','rules','governance'
       ]);
 
       const looksLikeName = (text) => {
@@ -124,6 +135,8 @@ class BannedAthleteService {
         const t = String(text).replace(/\s+/g, ' ').trim();
         if (!t) return false;
         if (STOPWORDS.has(t)) return false;
+        const tl = t.toLowerCase();
+        if (STOP_SUBSTRINGS.some(sub => tl.includes(sub))) return false;
         if (t.length < 4 || t.length > 60) return false;
         if (/\d/.test(t)) return false;
         // Canonicalize by removing diacritics and punctuation such as apostrophes/hyphens for validation
@@ -132,6 +145,8 @@ class BannedAthleteService {
         if (words.length < 2 || words.length > 4) return false;
         // Each token should be alphabetic with a minimal length
         if (!words.every(w => /^[a-z]{2,}$/.test(w))) return false;
+        // Exclude content-like phrases by token stoplist
+        if (words.some(w => STOP_TOKENS.has(w))) return false;
         if ((words[words.length - 1] || '').length < 3) return false;
         return true;
       };
@@ -1050,6 +1065,31 @@ class BannedAthleteService {
   async cleanupInvalidAiuEntries() {
     try {
       const Athlete = require('../models/Athlete');
+      // Known non-athlete phrases that sometimes slip through parsing
+      const badExactPhrases = [
+        'AIU Call Room','Anti-doping E-learning Resources','Competition Manipulation','Contact Us','Cookies','Cookie Policy','Data Protection',
+        'Global List Of Ineligible Persons','Join Us','Know The Process','Know The Rules','Know us','Know Us','Knowledge Centre',
+        'Power Of Respect','Privacy Policy','Terms','Understand The Prohibited List','Understand The Anti-doping Rules',
+        'View Current Vacancies','Whereabouts Requirements','Whereabouts Failures','World Athletics','Aiu Decision Appealable',
+        'Final Cas Decision','Final Aiu Decision','Pending Before Cas','Final Dt Decision','Final Cas Appeal Decision'
+      ];
+      const badSubstringPatterns = [
+        /\baiu call room\b/i,
+        /\banti[-\s]?doping\b/i,
+        /\bcompetition manipulation\b/i,
+        /\bcontact us\b/i,
+        /\bcookies?\b/i,
+        /\bdata protection\b/i,
+        /\bglobal list of ineligible persons\b/i,
+        /\bjoin us\b/i,
+        /\bknow (?:the|us|process|rules)\b/i,
+        /\bknowledge centre\b/i,
+        /\bpower of respect\b/i,
+        /\bwhereabouts (?:requirements|failures)\b/i,
+        /\bview current vacancies\b/i,
+        /\bund(erstand)? the (?:prohibited list|anti[-\s]?doping rules)\b/i
+      ];
+      const badNameOrs = [ { name: { $in: badExactPhrases } }, ...badSubstringPatterns.map(re => ({ name: { $regex: re } })) ];
       
       // Find and remove entries with invalid names (dates, single letters, etc.)
       const invalidEntries = await Athlete.find({
@@ -1062,7 +1102,8 @@ class BannedAthleteService {
           { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } }, // Known bad entries
           { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } }, // Names in country field
           { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }, // Overly long garbled names
-          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } } // Invalid name format
+          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } }, // Invalid name format
+          ...badNameOrs
         ]
       });
       
@@ -1076,7 +1117,8 @@ class BannedAthleteService {
           { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } },
           { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } },
           { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } },
-          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } }
+          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } },
+          ...badNameOrs
         ]
       });
       
