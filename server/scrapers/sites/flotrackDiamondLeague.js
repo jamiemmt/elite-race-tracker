@@ -57,22 +57,34 @@ class FloTrackDiamondLeague extends BaseScraper {
   extractResultsFromText(text, eventName, meetingName, meetingDate, location) {
     const results = [];
     
-    // Parse different result formats from FloTrack text
+    // Clean the text first - remove timestamps and extra formatting
+    const cleanText = text.replace(/\d{1,2}:\d{2}\s*[AP]M\s*ET\s*/gi, '').replace(/\s+/g, ' ').trim();
+    
+    // More precise patterns for athlete results
     const patterns = [
       // "Noah Lyles just barely notches his fifth 200m Diamond League title in Zürich by .02 with a time of 19.74!"
-      /(\w+\s+\w+).*?(?:wins?|takes?|notches?).*?(?:with a time of|in)\s+([\d:\.]+)/gi,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z']+)+).*?(?:wins?|takes?|notches?).*?(?:with a time of|in)\s+([\d:\.]+)/gi,
+      
+      // "Brittany Brown punches her ticket to the World Championships with her win in the 200m in Zürich with a season's best of 22.13!"
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z']+)+).*?(?:wins?|win).*?(?:with.*?of|in)\s+([\d:\.]+)/gi,
       
       // "Letsile Tebogo in second with an equalized seasons best of 19.76"
-      /(\w+\s+\w+)\s+in\s+(first|second|third|fourth|fifth|sixth|seventh|eighth|\d+(?:st|nd|rd|th)?)\s+.*?(?:with|in)\s+([\d:\.]+)/gi,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z']+)+)\s+in\s+(first|second|third|fourth|fifth|sixth|seventh|eighth|\d+(?:st|nd|rd|th)?)\s+.*?(?:with|in)\s+([\d:\.]+)/gi,
       
-      // "Alexander Ogando in third with 20.14"
-      /(\w+\s+\w+)\s+.*?(?:third|3rd)\s+.*?([\d:\.]+)/gi,
+      // "Dina Asher-Smith in second with 22.18 and Marie-Josèe Ta Lou-Smith in third with 22.18!"
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z'-]+)+)\s+(?:was\s+)?(first|second|third|fourth|fifth|sixth|seventh|eighth|\d+(?:st|nd|rd|th)?)\s+(?:in|with)\s+([\d:\.]+)/gi,
       
       // "Max Burgin was second in 1:42.21, followed by Marco Arop (1:42.57)"
-      /(\w+\s+\w+)\s+(?:was\s+)?(first|second|third|fourth|fifth|sixth|seventh|eighth|\d+(?:st|nd|rd|th)?)\s+in\s+([\d:\.]+)/gi,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:was\s+)?(first|second|third|fourth|fifth|sixth|seventh|eighth|\d+(?:st|nd|rd|th)?)\s+in\s+([\d:\.]+)/gi,
       
       // "followed by Marco Arop (1:42.57)"
-      /followed by\s+(\w+\s+\w+)\s+\(([\d:\.]+)\)/gi
+      /followed by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+\(([\d:\.]+)\)/gi,
+      
+      // "Christian Coleman wins his third Diamond League title (2018, 2023) in the men's 100m, running 9.97"
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+).*?running\s+([\d:\.]+)/gi,
+      
+      // "Emmanuel Wanyonyi wins his first Diamond League title, taking the men's 800m in 1:42.37"
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+).*?(?:taking|wins).*?in\s+([\d:\.]+)/gi
     ];
 
     const positionMap = {
@@ -82,24 +94,44 @@ class FloTrackDiamondLeague extends BaseScraper {
       '6th': 6, '7th': 7, '8th': 8
     };
 
-    let position = 1;
+    const foundAthletes = new Set(); // Prevent duplicates
     
     for (const pattern of patterns) {
       let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const name = match[1]?.trim();
-        const posText = match[2]?.toLowerCase();
-        const time = match[3] || match[2]; // Handle different capture groups
+      while ((match = pattern.exec(cleanText)) !== null) {
+        let name = match[1]?.trim();
+        let posText = match[2]?.toLowerCase();
+        let time = match[3] || match[2]; // Handle different capture groups
         
-        if (!name || !time) continue;
+        // Skip if no valid name or time
+        if (!name || !time || name.length < 3) continue;
+        
+        // Clean up name - remove common parsing artifacts
+        name = name.replace(/^(s\s+|ET\s+|PM\s+|AM\s+)/gi, '').trim();
+        name = name.replace(/\s+(wins?|takes?|was|in|with).*$/gi, '').trim();
+        
+        // Skip if name contains obvious parsing errors
+        if (name.match(/^\d+[ap]?\s*ET$/i) || 
+            name.match(/^(wins?|takes?|was|in|with|and|the|a|an)$/i) ||
+            name.length < 3 ||
+            foundAthletes.has(name.toLowerCase())) {
+          continue;
+        }
+        
+        // Clean up time
+        time = time.replace(/[^\d:\.]/g, '');
+        if (!time.match(/^\d+(?::\d+)?(?:\.\d+)?$/)) continue;
         
         // Determine position
-        let pos = position;
+        let pos = 1;
         if (posText && positionMap[posText]) {
           pos = positionMap[posText];
-        } else if (text.includes('wins') || text.includes('takes the title')) {
+        } else if (cleanText.toLowerCase().includes(name.toLowerCase()) && 
+                   (cleanText.toLowerCase().includes('wins') || cleanText.toLowerCase().includes('takes the title'))) {
           pos = 1;
         }
+        
+        foundAthletes.add(name.toLowerCase());
         
         const gender = this.parseGender(eventName);
         const distance = this.parseDistance(eventName);
@@ -127,8 +159,6 @@ class FloTrackDiamondLeague extends BaseScraper {
             formattedTime: time
           }
         });
-        
-        position++;
       }
     }
     
