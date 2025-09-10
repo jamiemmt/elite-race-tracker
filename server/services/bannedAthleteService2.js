@@ -971,30 +971,32 @@ class BannedAthleteService {
   async getBanStatistics() {
     try {
       const Athlete = require('../models/Athlete');
-      const bannedAthletes = await Athlete.find({ isBanned: true });
-      
+      const [bannedAthletes, provisionalAthletes] = await Promise.all([
+        Athlete.find({ isBanned: true }),
+        Athlete.find({ isProvisionallyBanned: true }),
+      ]);
+
       const stats = {
-        total: bannedAthletes.length,
+        totalBanned: bannedAthletes.length,
+        provisionalSuspensions: provisionalAthletes.length,
+        firstInstanceDecisions: bannedAthletes.filter(a => (a.banStatus || '').toLowerCase() === 'first_instance').length,
         byAgency: {},
         byBanType: {},
         byCountry: {},
-        bySource: {}
+        bySource: {},
       };
 
-      bannedAthletes.forEach(athlete => {
-        // Count by agency
+      // Aggregate across both banned and provisional sets for breakdowns
+      [...bannedAthletes, ...provisionalAthletes].forEach(athlete => {
         const agency = athlete.banAgency || 'Unknown';
         stats.byAgency[agency] = (stats.byAgency[agency] || 0) + 1;
 
-        // Count by ban type
         const banType = athlete.banType || 'Unknown';
         stats.byBanType[banType] = (stats.byBanType[banType] || 0) + 1;
 
-        // Count by country
         const country = athlete.country || 'Unknown';
         stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
 
-        // Count by source
         const source = athlete.banSource || 'Unknown';
         stats.bySource[source] = (stats.bySource[source] || 0) + 1;
       });
@@ -1009,21 +1011,32 @@ class BannedAthleteService {
   /**
    * Get banned athletes from database with full source information
    */
-  async getBannedAthletesFromDatabase() {
+  async getBannedAthletesFromDatabase(options = {}) {
     try {
+      const { includeBanned = true, includeProvisional = true } = options || {};
       const Athlete = require('../models/Athlete');
-      const bannedAthletes = await Athlete.find({ isBanned: true })
-        .select('name country banReason banSource banAgency banType banDateDetected')
+
+      // Build query to include banned and/or provisional athletes
+      const ors = [];
+      if (includeBanned) ors.push({ isBanned: true });
+      if (includeProvisional) ors.push({ isProvisionallyBanned: true });
+      const query = ors.length === 0 ? { isBanned: true } : (ors.length === 1 ? ors[0] : { $or: ors });
+
+      const athletes = await Athlete.find(query)
+        .select('name country banReason banSource banAgency banType banDateDetected isBanned isProvisionallyBanned banStatus')
         .sort({ name: 1 });
 
-      return bannedAthletes.map(athlete => ({
+      return athletes.map(athlete => ({
         name: athlete.name,
         country: athlete.country,
         reason: athlete.banReason,
         source: athlete.banSource,
         agency: athlete.banAgency,
         banType: athlete.banType,
-        dateDetected: athlete.banDateDetected
+        dateDetected: athlete.banDateDetected,
+        isBanned: athlete.isBanned,
+        isProvisionallyBanned: athlete.isProvisionallyBanned,
+        banStatus: athlete.banStatus,
       }));
     } catch (error) {
       console.error('Error fetching banned athletes from database:', error);
