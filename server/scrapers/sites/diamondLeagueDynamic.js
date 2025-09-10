@@ -1,5 +1,6 @@
 const BaseScraper = require('../BaseScraper');
 const puppeteer = require('puppeteer');
+const axios = require('axios');
 
 /**
  * Diamond League dynamic results scraper (headless, UI-driven)
@@ -18,6 +19,21 @@ class DiamondLeagueDynamic extends BaseScraper {
   constructor() {
     super('diamondLeagueDynamic', 'https://www.diamondleague.com');
     this.resultsUrl = `${this.baseUrl}/results-standings/results/`;
+  }
+
+  normalizeTimeStr(str) {
+    if (!str) return null;
+    const m = String(str).match(/(\d+:)?\d+(?::\d+)?(?:\.\d+)?/);
+    return m ? m[0] : null;
+  }
+
+  mapSwissRow(row) {
+    const name = row?.Athlete?.FullName || row?.Athlete?.Name || row?.Competitor || row?.Name || '';
+    const country = row?.Athlete?.Nat || row?.Nation || row?.Country || 'UNK';
+    const position = row?.Rank || row?.Place || row?.Position || row?.Order || null;
+    const perf = row?.Result || row?.Time || row?.Performance || row?.Mark || row?.Best || null;
+    const formattedTime = this.normalizeTimeStr(perf);
+    return { name, country, position, formattedTime };
   }
 
   parseGender(eventTitle) {
@@ -55,9 +71,15 @@ class DiamondLeagueDynamic extends BaseScraper {
 
   async scrape(options = {}) {
     const season = options.season || 2025;
+    const directUrl = options.url || options.meetingPageUrl || '';
     const meetingQuery = (options.meeting || '').trim();
     const genderFilter = (options.gender || 'All').toLowerCase();
-    const eventNameFilter = (options.eventName || '').trim().toLowerCase();
+    const eventNameFilterRaw = (options.eventName || '').trim();
+    // Normalize common shorthand like "100m" -> "100 metres"
+    const eventNameFilter = eventNameFilterRaw
+      .toLowerCase()
+      .replace(/\b(\d+)m\b/g, '$1 metres')
+      .trim();
 
     let browser;
     const results = [];
@@ -74,39 +96,70 @@ class DiamondLeagueDynamic extends BaseScraper {
         ]
       });
       const page = await browser.newPage();
+      const captured = new Set();
+      page.on('response', async (res) => {
+        try {
+          const url = res.url();
+          if (/ps-cache\.web\.swisstiming\.com\/node\/db\//i.test(url) || /liveresults\.swisstiming/i.test(url)) {
+            captured.add(url);
+          }
+        } catch (_) {}
+      });
       await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118 Safari/537.36');
 
-      const targetUrl = `${this.resultsUrl}?season=${encodeURIComponent(String(season))}`;
+      const targetUrl = directUrl || `${this.resultsUrl}?season=${encodeURIComponent(String(season))}`;
       await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
-      // Try to set meeting filter by checking inputs named "meetings"
-      if (meetingQuery) {
+      // Handle cookie consent (Complianz)
+      try {
+        await page.evaluate(() => {
+          const tryClick = (sel) => {
+            const el = document.querySelector(sel);
+            if (el) { el.click(); return true; }
+            return false;
+          };
+          // Common Complianz selectors
+          if (tryClick('button.cmplz-accept')) return;
+          if (tryClick('button[id*="cmplz-accept"]')) return;
+          const btns = Array.from(document.querySelectorAll('button, a'));
+          const accept = btns.find(b => /accept/i.test(b.textContent || ''));
+          if (accept) accept.click();
+        });
+        await page.waitForTimeout(800);
+      } catch (_) {}
+
+      // If we are on the global results page (no direct URL), try to set meeting filter
+      if (!directUrl && meetingQuery) {
+        // Open the Meetings filter dropdown if collapsed, then set only the requested meeting
         const foundMeeting = await page.evaluate((mq) => {
-          const boxes = Array.from(document.querySelectorAll('input[name="meetings"]'));
+          function text(el){return (el?.textContent||'').trim();}
+          const fold = (s)=> (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+          const mfold = fold(mq);
+          const root = document.querySelector('[data-select-type="meetings"]');
+          if (!root) return false;
+          const labels = Array.from(root.querySelectorAll('label'));
           let matched = false;
-          for (const box of boxes) {
-            const v = (box.value || '').toLowerCase();
-            const label = (box.closest('label')?.textContent || '').toLowerCase();
-            if (v.includes(mq.toLowerCase()) || label.includes(mq.toLowerCase())) {
-              box.checked = true;
-              box.dispatchEvent(new Event('change', { bubbles: true }));
+          labels.forEach(lbl => {
+            const t = fold(text(lbl));
+            const input = lbl.querySelector('input[type="checkbox"]');
+            if (!input) return;
+            if (t.includes(mfold)) {
+              if (!input.checked) lbl.click();
               matched = true;
             } else {
-              // uncheck others to narrow down
-              box.checked = false;
-              box.dispatchEvent(new Event('change', { bubbles: true }));
+              if (input.checked) lbl.click();
             }
-          }
+          });
+          // update visible summary button text if exists
+          const btn = root.querySelector('[data-el="btn-base"]');
+          if (btn && matched) btn.textContent = labels.find(l=>fold(text(l)).includes(mfold))?.textContent || btn.textContent;
           return matched;
         }, meetingQuery);
-        // Give the page some time to render the filtered results list
-        if (foundMeeting) {
-          await page.waitForTimeout(2000);
-        }
+        if (foundMeeting) await page.waitForTimeout(3500);
       }
 
       // If gender filter requested, try clicking corresponding checkbox set
-      if (genderFilter === 'men' || genderFilter === 'women') {
+      if (!directUrl && (genderFilter === 'men' || genderFilter === 'women')) {
         await page.evaluate((gf) => {
           // look for inputs under disciplines filters for men/women
           const menBtn = document.querySelector('[data-select-type="gender"] input[value="Men"]');
@@ -121,9 +174,28 @@ class DiamondLeagueDynamic extends BaseScraper {
         await page.waitForTimeout(1200);
       }
 
-      // Expand any collapsible event blocks by clicking toggles with text like 'Results' when present
+      // Try clicking specific event headings if provided (e.g., "100 metres")
+      if (eventNameFilter) {
+        try {
+          await page.evaluate((filter) => {
+            const fold = (s)=> (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+            const norm = (s)=> fold(s).replace(/\b(\d+)m\b/g,'$1 metres');
+            const nodes = Array.from(document.querySelectorAll('a, button, h2, h3, .event-title, .discipline, summary'));
+            for (const n of nodes) {
+              const t = norm(n.textContent || '');
+              if (t.includes(filter)) {
+                // Click to expand/open
+                if (n instanceof HTMLElement) n.click();
+              }
+            }
+          }, eventNameFilter);
+          await page.waitForTimeout(1500);
+        } catch (_) {}
+      }
+
+      // Expand any collapsible event blocks by clicking toggles with text like 'Results'
       // Then parse all tables that look like results (with Rank/Name/Result headers)
-      const scraped = await page.evaluate((eventNameFilter) => {
+      const scrapedMain = await page.evaluate((eventNameFilter) => {
         const parsed = [];
 
         function text(el) { return (el?.textContent || '').trim(); }
@@ -170,7 +242,8 @@ class DiamondLeagueDynamic extends BaseScraper {
 
           // Determine title, optionally filter by eventNameFilter
           const title = nearestTitle(table);
-          if (eventNameFilter && !title.toLowerCase().includes(eventNameFilter)) continue;
+          const normTitle = title.toLowerCase().replace(/\b(\d+)m\b/g,'$1 metres');
+          if (eventNameFilter && !normTitle.includes(eventNameFilter)) continue;
 
           const rows = Array.from(table.querySelectorAll('tbody tr'));
           let posCounter = 1;
@@ -205,6 +278,225 @@ class DiamondLeagueDynamic extends BaseScraper {
         }
         return parsed;
       }, eventNameFilter);
+
+      // If nothing found on main page, try collecting explicit 'Results' links near matching event titles and following them
+      let scraped = scrapedMain;
+      if ((!scraped || scraped.length === 0)) {
+        try {
+          const resultsLinks = await page.evaluate((eventNameFilter) => {
+            const fold = (s)=> (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+            const norm = (s)=> fold(s).replace(/\b(\d+)m\b/g,'$1 metres');
+            const links = [];
+            // Scan blocks that contain a discipline title and a nearby 'Results' link
+            const blocks = Array.from(document.querySelectorAll('section, article, div'));
+            for (const b of blocks) {
+              const titleEl = b.querySelector('h2, h3, .discipline, .event-title');
+              const title = norm(titleEl?.textContent || '');
+              if (!title) continue;
+              if (eventNameFilter && !title.includes(eventNameFilter)) continue;
+              const a = Array.from(b.querySelectorAll('a')).find(a=>/results/i.test(a.textContent||''));
+              if (a && a.href) links.push({ title: titleEl?.textContent || '', href: a.href });
+            }
+            return links;
+          }, eventNameFilter);
+          for (const link of resultsLinks) {
+            try {
+              await page.goto(link.href, { waitUntil: 'networkidle2', timeout: 60000 });
+              // parse tables on the target page
+              const sub = await page.evaluate(() => {
+                const parsed = [];
+                function text(el){return (el?.textContent||'').trim();}
+                function nearestTitle(el){
+                  let cur = el;
+                  for (let i=0;i<8 && cur;i++){
+                    const h = cur.querySelector?.('h2, h3, .event-title, .discipline') || cur.previousElementSibling;
+                    if (h && text(h)) return text(h);
+                    cur = cur.parentElement;
+                  }
+                  const alt = document.querySelector('h2, h3');
+                  return alt ? text(alt) : document.title || 'Diamond League Event';
+                }
+                const meetingTitle = text(document.querySelector('.page-title, h1, title')) || document.title || 'Diamond League Meeting';
+                const venue = text(document.querySelector('.venue, .location')) || '';
+                const timeEl = document.querySelector('time');
+                const dateStr = timeEl ? (timeEl.getAttribute('datetime') || text(timeEl)) : '';
+                const tables = Array.from(document.querySelectorAll('table'));
+                for (const table of tables){
+                  const headers = Array.from(table.querySelectorAll('thead th, tbody tr:first-child th, tbody tr:first-child td')).map(th => text(th).toLowerCase());
+                  if (!headers.length) continue;
+                  const colPos = {
+                    rank: headers.findIndex(h => h.includes('rank') || h === '#' || h.includes('pos')),
+                    name: headers.findIndex(h => h.includes('name') || h.includes('athlete')),
+                    nation: headers.findIndex(h => h.includes('nat') || h.includes('country')),
+                    result: headers.findIndex(h => h.includes('result') || h.includes('time') || h.includes('performance') || h.includes('mark')),
+                  };
+                  if (colPos.name === -1 || colPos.result === -1) continue;
+                  const title = nearestTitle(table);
+                  const rows = Array.from(table.querySelectorAll('tbody tr'));
+                  let posCounter = 1;
+                  for (const row of rows){
+                    const cells = Array.from(row.querySelectorAll('td'));
+                    if (!cells.length) continue;
+                    const name = text(cells[colPos.name]);
+                    const country = colPos.nation !== -1 ? text(cells[colPos.nation]).slice(0,4).toUpperCase() : 'UNK';
+                    let resultText = text(cells[colPos.result]);
+                    if (!name || !resultText) continue;
+                    if (/^(dns|dnf|dq)/i.test(resultText)) continue;
+                    const m = resultText.match(/(\d+:)?\d+(?::\d+)?(?:\.\d+)?/);
+                    if (!m) continue;
+                    resultText = m[0];
+                    let rank = colPos.rank !== -1 ? parseInt(text(cells[colPos.rank]),10) : NaN;
+                    if (!Number.isFinite(rank)) rank = posCounter;
+                    posCounter++;
+                    parsed.push({ meetingTitle, venue, dateStr, title, name, country, resultText, rank });
+                  }
+                }
+                return parsed;
+              });
+              if (sub && sub.length) {
+                scraped = (scraped || []).concat(sub);
+              }
+            } catch (e) {
+              // continue with next link
+            }
+          }
+        } catch (_) {}
+      }
+
+      if ((!scraped || scraped.length === 0)) {
+        try {
+          const frames = page.frames();
+          const live = frames.find(f => /liveresults|swisstiming/i.test(f.url()));
+          if (live) {
+            // try simple parse of tables inside iframe
+            const inside = await live.evaluate((eventNameFilter) => {
+              const parsed = [];
+              function text(el){return (el?.textContent||'').trim();}
+              function nearestTitle(el){
+                let cur = el;
+                for (let i=0;i<8 && cur;i++){
+                  const h = cur.querySelector?.('h2, h3, .event-title, .discipline') || cur.previousElementSibling;
+                  if (h && text(h)) return text(h);
+                  cur = cur.parentElement;
+                }
+                const alt = document.querySelector('h2, h3');
+                return alt ? text(alt) : 'Diamond League Event';
+              }
+              const meetingTitle = text(document.querySelector('.page-title, h1, title')) || 'Diamond League Meeting';
+              const venue = text(document.querySelector('.venue, .location')) || '';
+              const timeEl = document.querySelector('time');
+              const dateStr = timeEl ? (timeEl.getAttribute('datetime') || text(timeEl)) : '';
+              const normFilter = (eventNameFilter||'').toLowerCase();
+              const tables = Array.from(document.querySelectorAll('table'));
+              for (const table of tables){
+                const headers = Array.from(table.querySelectorAll('thead th, tbody tr:first-child th, tbody tr:first-child td')).map(th => text(th).toLowerCase());
+                if (!headers.length) continue;
+                const colPos = {
+                  rank: headers.findIndex(h => h.includes('rank') || h === '#' || h.includes('pos')),
+                  name: headers.findIndex(h => h.includes('name') || h.includes('athlete')),
+                  nation: headers.findIndex(h => h.includes('nat') || h.includes('country')),
+                  result: headers.findIndex(h => h.includes('result') || h.includes('time') || h.includes('performance') || h.includes('mark')),
+                };
+                if (colPos.name === -1 || colPos.result === -1) continue;
+                const title = nearestTitle(table);
+                const normTitle = title.toLowerCase().replace(/\b(\d+)m\b/g,'$1 metres');
+                if (normFilter && !normTitle.includes(normFilter)) continue;
+                const rows = Array.from(table.querySelectorAll('tbody tr'));
+                let posCounter = 1;
+                for (const row of rows){
+                  const cells = Array.from(row.querySelectorAll('td'));
+                  if (!cells.length) continue;
+                  const name = text(cells[colPos.name]);
+                  const country = colPos.nation !== -1 ? text(cells[colPos.nation]).slice(0,4).toUpperCase() : 'UNK';
+                  let resultText = text(cells[colPos.result]);
+                  if (!name || !resultText) continue;
+                  if (/^(dns|dnf|dq)/i.test(resultText)) continue;
+                  const m = resultText.match(/(\d+:)?\d+(?::\d+)?(?:\.\d+)?/);
+                  if (!m) continue;
+                  resultText = m[0];
+                  let rank = colPos.rank !== -1 ? parseInt(text(cells[colPos.rank]),10) : NaN;
+                  if (!Number.isFinite(rank)) rank = posCounter;
+                  posCounter++;
+                  parsed.push({ meetingTitle, venue, dateStr, title, name, country, resultText, rank });
+                }
+              }
+              return parsed;
+            }, eventNameFilter);
+            scraped = inside || [];
+          }
+        } catch (e) {
+          // ignore and proceed
+        }
+      }
+
+      // If still nothing, try SwissTiming JSON endpoints captured via network
+      if ((!scraped || scraped.length === 0) && captured.size) {
+        try {
+          const payloads = [];
+          for (const url of Array.from(captured)) {
+            if (/ps-cache\.web\.swisstiming\.com\/node\/db\//i.test(url)) {
+              try {
+                const { data } = await axios.get(url, { timeout: 20000, httpsAgent: new (require('https').Agent)({ rejectUnauthorized: false }) });
+                payloads.push(data);
+              } catch (_) {}
+            }
+          }
+          const filterStr = (eventNameFilter || '').toLowerCase();
+          const found = [];
+          const walk = (node) => {
+            if (!node) return;
+            if (Array.isArray(node)) {
+              if (node.length && typeof node[0] === 'object') {
+                const s = JSON.stringify(node[0]).toLowerCase();
+                if (/(rank|place|position)/.test(s) && /(time|result|mark|performance|best)/.test(s)) {
+                  // try to infer a title from sibling keys or parents (best effort)
+                  node.forEach((row, idx) => {
+                    const mapped = this.mapSwissRow(row);
+                    if (!mapped.name || !mapped.formattedTime) return;
+                    found.push({ mapped, idx });
+                  });
+                }
+              }
+              node.forEach(walk);
+            } else if (typeof node === 'object') {
+              for (const k of Object.keys(node)) walk(node[k]);
+            }
+          };
+          payloads.forEach(walk);
+          if (found.length) {
+            let pos = 1;
+            for (const { mapped } of found) {
+              // crude filter: ensure eventNameFilter words are present in a nearby discipline name if available
+              // Since we don't have the exact event title, simply proceed when a filter is set
+              if (filterStr && !filterStr.split(/\s+/).every(w => w.length < 3 || JSON.stringify(mapped).toLowerCase().includes(w))) {
+                continue;
+              }
+              const gender = genderFilter === 'women' ? 'Female' : genderFilter === 'men' ? 'Male' : 'Mixed';
+              const title = eventNameFilterRaw || 'Event';
+              const distance = this.parseDistance(title);
+              const race = {
+                name: `${meetingQuery || 'Diamond League Meeting'} - ${title}`,
+                location: 'Diamond League Venue',
+                date: new Date(),
+                distance,
+                distanceUnit: 'm',
+                category: 'Track',
+                gender,
+                isElite: true,
+              };
+              const position = Number(mapped.position) || pos;
+              scraped.push({
+                position,
+                athlete: { name: mapped.name, country: mapped.country, gender },
+                race,
+                formattedTime: mapped.formattedTime,
+                finishTime: this.convertTimeToSeconds(mapped.formattedTime),
+              });
+              pos++;
+            }
+          }
+        } catch (_) {}
+      }
 
       // Map scraped rows into our standardized result structure
       for (const r of scraped) {
