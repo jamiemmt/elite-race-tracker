@@ -196,7 +196,7 @@ class BannedAthleteService {
         'Decision','Decisions','Appeal','Appeals','Download','Downloads','Join Us','Competition Manipulation','Knowledge Centre','Data Protection',
         'Terms Of Use','Testing Data','Sport Resolutions','Sign Up To Receive Press Releases','Sign Up To Receive Newsletters',
         'Road To Tokyo Integrity Guide','Provisional Suspensions In Force','Prohibited List','Pending Appeals',
-        'Participate And Contribute To Our Community','Make A Report','Light Blue Text','Life Ban'
+        'Participate And Contribute To Our Community','Make A Report','Light Blue Text','Life Ban','- Bold, Italic Text'
       ]);
 
       const STOP_SUBSTRINGS = [
@@ -204,7 +204,7 @@ class BannedAthleteService {
         'join us','know the','know us','knowledge centre','power of respect','privacy policy','terms','terms of use','download','appeal','decision',
         'pending appeals','prohibited list','first instance','provisional suspensions','provisional suspensions in force','aiu','view current vacancies',
         'whereabouts requirements','whereabouts failures','world athletics','sign up to receive','sport resolutions','road to tokyo integrity guide',
-        'participate and contribute to our community','make a report','testing data','light blue text','life ban'
+        'participate and contribute to our community','make a report','testing data','light blue text','life ban','bold, italic text'
       ];
       const STOP_TOKENS = new Set([
         'the','of','for','and','anti','doping','global','list','resources','know','join','room','call','manipulation','competition',
