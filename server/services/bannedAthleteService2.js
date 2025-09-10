@@ -49,6 +49,83 @@ class BannedAthleteService {
   }
 
   /**
+   * Upsert the combined AIU list (from all enabled sources) into the database
+   * This is more robust than source-by-source population and helps ensure
+   * provisionals like Ruth Chepng’etich are present in DB even if one parser misses them.
+   */
+  async syncCombinedAiuToDb(options = {}) {
+    try {
+      const Athlete = require('../models/Athlete');
+      const {
+        includeProvisional = true,
+        includeFirstInstance = true,
+        includePdf = true,
+        includeKnown = true,
+      } = options || {};
+
+      const combined = await this.getAllBannedAthletes({ includeProvisional, includeFirstInstance, includePdf, includeKnown });
+      let totalAdded = 0;
+      let totalUpdated = 0;
+      const errors = [];
+
+      for (const rec of combined) {
+        try {
+          if (!rec?.name || !rec?.country) continue;
+          const existing = await Athlete.findOne({
+            name: new RegExp(`^${rec.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+            country: rec.country,
+          });
+          if (existing) {
+            let updated = false;
+            const fields = [
+              ['isBanned', 'isBanned'],
+              ['isProvisionallyBanned', 'isProvisionallyBanned'],
+              ['banReason', 'banReason'],
+              ['banSource', 'banSource'],
+              ['banAgency', 'banAgency'],
+              ['banType', 'banType'],
+              ['banDateDetected', 'banDateDetected'],
+              ['banStatus', 'banStatus'],
+            ];
+            for (const [dst, src] of fields) {
+              if ((existing[dst] == null || existing[dst] === false || existing[dst] === 'cleared') && rec[src] != null) {
+                existing[dst] = rec[src];
+                updated = true;
+              }
+            }
+            if (updated) {
+              await existing.save();
+              totalUpdated++;
+            }
+          } else {
+            await Athlete.create({
+              name: rec.name,
+              country: rec.country,
+              gender: 'Female',
+              isBanned: !!rec.isBanned,
+              isProvisionallyBanned: !!rec.isProvisionallyBanned,
+              banReason: rec.banReason || rec.reason || undefined,
+              banSource: rec.banSource || rec.source || undefined,
+              banAgency: rec.banAgency || rec.agency || undefined,
+              banType: rec.banType || undefined,
+              banDateDetected: rec.banDateDetected || rec.dateDetected || undefined,
+              banStatus: rec.banStatus || (rec.isProvisionallyBanned ? 'provisional' : (rec.isBanned ? 'first_instance' : 'cleared')),
+            });
+            totalAdded++;
+          }
+        } catch (e) {
+          errors.push({ name: rec?.name, country: rec?.country, error: e.message });
+        }
+      }
+
+      return { added: totalAdded, updated: totalUpdated, total: combined.length, errors };
+    } catch (error) {
+      console.error('Error syncing combined AIU list to DB:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get the known banned athletes list
    */
   getKnownBannedAthletes() {
@@ -116,13 +193,18 @@ class BannedAthleteService {
         'Privacy Policy','Cookie Policy','Cookies','Terms','AIU Call Room','AIU','Home','Search','News','Education','About',
         'Integrity','Power Of Respect','Global List','Global List Of Ineligible Persons','Provisional Suspensions','First Instance Decisions','Resources',
         'Anti-doping E-learning Resources','Events','Rankings','Media','What We Do','Who We Are','Governance','Anti-doping','Rules','Regulations',
-        'Decision','Decisions','Appeal','Appeals','Download','Downloads','Join Us','Competition Manipulation','Knowledge Centre','Data Protection'
+        'Decision','Decisions','Appeal','Appeals','Download','Downloads','Join Us','Competition Manipulation','Knowledge Centre','Data Protection',
+        'Terms Of Use','Testing Data','Sport Resolutions','Sign Up To Receive Press Releases','Sign Up To Receive Newsletters',
+        'Road To Tokyo Integrity Guide','Provisional Suspensions In Force','Prohibited List','Pending Appeals',
+        'Participate And Contribute To Our Community','Make A Report','Light Blue Text','Life Ban'
       ]);
 
       const STOP_SUBSTRINGS = [
         'anti-doping','aiu call room','competition manipulation','data protection','cookie','cookies','global list of ineligible persons',
-        'join us','know the','know us','knowledge centre','power of respect','privacy policy','terms','download','appeal','decision',
-        'first instance','provisional suspensions','aiu','view current vacancies','whereabouts requirements','whereabouts failures','world athletics'
+        'join us','know the','know us','knowledge centre','power of respect','privacy policy','terms','terms of use','download','appeal','decision',
+        'pending appeals','prohibited list','first instance','provisional suspensions','provisional suspensions in force','aiu','view current vacancies',
+        'whereabouts requirements','whereabouts failures','world athletics','sign up to receive','sport resolutions','road to tokyo integrity guide',
+        'participate and contribute to our community','make a report','testing data','light blue text','life ban'
       ];
       const STOP_TOKENS = new Set([
         'the','of','for','and','anti','doping','global','list','resources','know','join','room','call','manipulation','competition',
@@ -1071,7 +1153,10 @@ class BannedAthleteService {
         'Global List Of Ineligible Persons','Join Us','Know The Process','Know The Rules','Know us','Know Us','Knowledge Centre',
         'Power Of Respect','Privacy Policy','Terms','Understand The Prohibited List','Understand The Anti-doping Rules',
         'View Current Vacancies','Whereabouts Requirements','Whereabouts Failures','World Athletics','Aiu Decision Appealable',
-        'Final Cas Decision','Final Aiu Decision','Pending Before Cas','Final Dt Decision','Final Cas Appeal Decision'
+        'Final Cas Decision','Final Aiu Decision','Pending Before Cas','Final Dt Decision','Final Cas Appeal Decision',
+        'Understand The Rules Of Governance','Terms Of Use','Testing Data','Sport Resolutions','Sign Up To Receive Press Releases',
+        'Sign Up To Receive Newsletters','Road To Tokyo Integrity Guide','Provisional Suspensions In Force','Prohibited List','Pending Appeals',
+        'Participate And Contribute To Our Community','Make A Report','Light Blue Text','Life Ban'
       ];
       const badSubstringPatterns = [
         /\baiu call room\b/i,
@@ -1087,7 +1172,19 @@ class BannedAthleteService {
         /\bpower of respect\b/i,
         /\bwhereabouts (?:requirements|failures)\b/i,
         /\bview current vacancies\b/i,
-        /\bund(erstand)? the (?:prohibited list|anti[-\s]?doping rules)\b/i
+        /\bund(erstand)? the (?:prohibited list|anti[-\s]?doping rules|rules of governance)\b/i,
+        /\bterms of use\b/i,
+        /\bsport resolutions\b/i,
+        /\bsign up to receive (?:press releases|newsletters)\b/i,
+        /\broad to tokyo integrity guide\b/i,
+        /\bprovisional suspensions in force\b/i,
+        /\bpending appeals\b/i,
+        /\bprohibited list\b/i,
+        /\bparticipate and contribute to our community\b/i,
+        /\bmake a report\b/i,
+        /\btesting data\b/i,
+        /\blight blue text\b/i,
+        /\blife ban\b/i
       ];
       const badNameOrs = [ { name: { $in: badExactPhrases } }, ...badSubstringPatterns.map(re => ({ name: { $regex: re } })) ];
       
@@ -1102,7 +1199,6 @@ class BannedAthleteService {
           { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } }, // Known bad entries
           { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } }, // Names in country field
           { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }, // Overly long garbled names
-          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } }, // Invalid name format
           ...badNameOrs
         ]
       });
@@ -1117,7 +1213,6 @@ class BannedAthleteService {
           { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } },
           { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } },
           { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } },
-          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } },
           ...badNameOrs
         ]
       });

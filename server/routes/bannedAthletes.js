@@ -138,6 +138,28 @@ router.post('/populate-aiu', async (req, res) => {
   }
 });
 
+// Upsert the combined AIU list to DB (more robust than source-by-source)
+router.post('/sync-combined', async (req, res) => {
+  try {
+    const BannedAthleteService = require('../services/bannedAthleteService2');
+    const bannedAthleteService = new BannedAthleteService();
+
+    const opt = (v, def=true) => (typeof v === 'string' ? !/^(?:0|false)$/i.test(v) : (v ?? def));
+    const options = {
+      includeProvisional: opt(req.query.includeProvisional, true),
+      includeFirstInstance: opt(req.query.includeFirstInstance, true),
+      includePdf: opt(req.query.includePdf, true),
+      includeKnown: opt(req.query.includeKnown, true),
+    };
+
+    const result = await bannedAthleteService.syncCombinedAiuToDb(options);
+    res.json({ success: true, message: 'Combined AIU list synced to DB', summary: result, options });
+  } catch (error) {
+    console.error('Error syncing combined AIU list:', error);
+    res.status(500).json({ success: false, error: 'Failed to sync combined AIU list', details: error.message });
+  }
+});
+
 // Preview AIU sources (non-destructive) and return combined counts + sample
 router.get('/aiu/preview', async (req, res) => {
   try {
