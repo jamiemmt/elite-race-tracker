@@ -59,6 +59,20 @@ class BaseScraper {
   }
 
   /**
+   * Convert a time string like "9.83", "3:35.12", or "1:59:12.3" into seconds
+   * @param {string} timeStr
+   * @returns {number} seconds
+   */
+  convertTimeToSeconds(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
+    const clean = timeStr.replace(/[^0-9:\.]/g, '');
+    const parts = clean.split(':');
+    if (parts.length === 3) return (+parts[0]) * 3600 + (+parts[1]) * 60 + parseFloat(parts[2]);
+    if (parts.length === 2) return (+parts[0]) * 60 + parseFloat(parts[1]);
+    return parseFloat(parts[0] || '0') || 0;
+  }
+
+  /**
    * Check if a result is a world record or country best
    * @param {Object} result - Result object
    * @param {Object} recordsData - Records data object
