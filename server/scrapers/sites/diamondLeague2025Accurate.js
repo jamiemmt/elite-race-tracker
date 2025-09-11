@@ -192,17 +192,36 @@ class DiamondLeague2025Accurate extends BaseScraper {
         }
       }
 
-      // Step 2: Remove Jakob Ingebrigtsen from fake Diamond League Final 2025 events
+      // Step 2: Remove fake Eugene Diamond League events (real 2025 Final was in Zurich)
+      const fakeEugeneRaces = await Race.find({
+        $and: [
+          { name: { $regex: /Diamond League Final 2025/ } },
+          { location: 'Eugene, USA' }
+        ]
+      });
+
+      for (const race of fakeEugeneRaces) {
+        // Delete all results for this fake race
+        const raceResults = await Result.deleteMany({ race: race._id });
+        deletedResults += raceResults.deletedCount;
+        
+        // Delete the fake race
+        await Race.deleteOne({ _id: race._id });
+        deletedRaces += 1;
+        console.log(`Deleted fake Eugene race: ${race.name} and ${raceResults.deletedCount} results`);
+      }
+
+      // Step 3: Remove Jakob Ingebrigtsen from any remaining fake Diamond League Final 2025 events
       const jakobAthlete = await Athlete.findOne({ name: 'Jakob Ingebrigtsen' });
       if (jakobAthlete) {
-        const fakeRaces = await Race.find({
+        const remainingFakeRaces = await Race.find({
           name: { $in: [
             'Diamond League Final 2025 - Men\'s 100m',
             'Diamond League Final 2025 - Men\'s 5000m'
           ]}
         });
         
-        for (const race of fakeRaces) {
+        for (const race of remainingFakeRaces) {
           const jakobResult = await Result.findOne({ 
             athlete: jakobAthlete._id, 
             race: race._id 
@@ -215,7 +234,7 @@ class DiamondLeague2025Accurate extends BaseScraper {
         }
       }
 
-      // Step 3: Remove results with corrupted time formats
+      // Step 4: Remove results with corrupted time formats
       const corruptedTimeResults = await Result.find({
         $or: [
           { formattedTime: { $regex: /\d+\.\d+\.\d+:\d+/ } }, // "20.14.3:30"
@@ -231,7 +250,7 @@ class DiamondLeague2025Accurate extends BaseScraper {
         console.log(`Deleted ${corruptedTimeResults.length} results with corrupted times`);
       }
 
-      // Step 4: Clean up orphaned races and athletes
+      // Step 5: Clean up orphaned races and athletes
       const orphanedRaces = await Race.find({
         _id: { $nin: await Result.distinct('race') }
       });
