@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Badge, Spinner, Alert, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaPlus, FaCalendarAlt, FaMapMarkerAlt, FaRunning } from 'react-icons/fa';
 import axios from 'axios';
@@ -17,6 +17,8 @@ const Races = () => {
   // Unique filters
   const [categories, setCategories] = useState([]);
   const [distances, setDistances] = useState({});
+  const [groupBy, setGroupBy] = useState('meeting'); // 'meeting' | 'date'
+  const [disciplineAsc, setDisciplineAsc] = useState(true);
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -95,6 +97,64 @@ const Races = () => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
+
+  const formatDateShort = (dateString) => {
+    const d = new Date(dateString);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const extractMeetingName = (race) => {
+    // If race.name contains " - ", treat the first segment as meeting name
+    if (race?.name && race.name.includes(' - ')) {
+      return race.name.split(' - ')[0];
+    }
+    // Fallback: use location + year
+    const year = new Date(race.date).getFullYear();
+    return `${race.location || 'Unknown'} ${year}`;
+  };
+
+  const extractDiscipline = (race) => {
+    if (race?.name && race.name.includes(' - ')) {
+      return race.name.split(' - ').slice(1).join(' - ');
+    }
+    // Fallback to distance/gender
+    return `${race.gender || ''} ${race.distance || ''}${race.distanceUnit || ''}`.trim();
+  };
+
+  const groupedAndSorted = React.useMemo(() => {
+    // Group races by meeting or date
+    const groups = {};
+    const makeKey = (race) => groupBy === 'meeting' ? extractMeetingName(race) : formatDateShort(race.date);
+    filteredRaces.forEach(r => {
+      const key = makeKey(r);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+
+    // Sort groups by date ascending
+    const groupEntries = Object.entries(groups).sort((a, b) => {
+      const aMin = Math.min(...a[1].map(r => new Date(r.date).getTime()));
+      const bMin = Math.min(...b[1].map(r => new Date(r.date).getTime()));
+      return aMin - bMin;
+    });
+
+    // Sort items within each group by discipline
+    const sortedGroups = groupEntries.map(([key, items]) => {
+      const sortedItems = [...items].sort((ra, rb) => {
+        const da = extractDiscipline(ra).toLowerCase();
+        const db = extractDiscipline(rb).toLowerCase();
+        if (da < db) return disciplineAsc ? -1 : 1;
+        if (da > db) return disciplineAsc ? 1 : -1;
+        return 0;
+      });
+      return [key, sortedItems];
+    });
+
+    return sortedGroups;
+  }, [filteredRaces, groupBy, disciplineAsc]);
 
   if (loading) {
     return (
@@ -188,6 +248,20 @@ const Races = () => {
             </Row>
           </Col>
         </Row>
+        <Row>
+          <Col md={3}>
+            <Form.Group className="mb-3">
+              <Form.Label>Group By</Form.Label>
+              <Form.Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
+                <option value="meeting">Meeting</option>
+                <option value="date">Date</option>
+              </Form.Select>
+            </Form.Group>
+          </Col>
+          <Col md={9} className="d-flex align-items-end justify-content-end">
+            <small className="text-muted me-2">Click the Discipline header to sort {disciplineAsc ? '▲' : '▼'}</small>
+          </Col>
+        </Row>
       </div>
 
       {filteredRaces.length === 0 ? (
@@ -195,40 +269,47 @@ const Races = () => {
           No races found matching your criteria. Try adjusting your filters or add a new race.
         </Alert>
       ) : (
-        <Row xs={1} md={2} lg={3} className="g-4">
-          {filteredRaces.map(race => (
-            <Col key={race._id}>
-              <Card className="race-card h-100">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <Badge bg="primary">{race.category}</Badge>
-                  <Badge bg="secondary">
-                    {race.distance} {race.distanceUnit}
-                  </Badge>
-                </Card.Header>
-                <Card.Body>
-                  <Card.Title>{race.name}</Card.Title>
-                  <Card.Text>
-                    <FaCalendarAlt className="me-2" />
-                    {formatDate(race.date)}
-                  </Card.Text>
-                  <Card.Text>
-                    <FaMapMarkerAlt className="me-2" />
-                    {race.location}
-                  </Card.Text>
-                  <Card.Text>
-                    <FaRunning className="me-2" />
-                    {race.gender} Event
-                  </Card.Text>
-                </Card.Body>
-                <Card.Footer>
-                  <Link to={`/races/${race._id}`}>
-                    <Button variant="primary" size="sm">View Details</Button>
-                  </Link>
-                </Card.Footer>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        <div className="race-table-wrapper">
+          <Table striped bordered hover responsive>
+            <thead>
+              <tr>
+                <th style={{ width: '18%' }}>Date</th>
+                <th style={{ width: '26%' }}>Meeting</th>
+                <th style={{ width: '24%', cursor: 'pointer' }} onClick={() => setDisciplineAsc(!disciplineAsc)}>
+                  Discipline {disciplineAsc ? '▲' : '▼'}
+                </th>
+                <th style={{ width: '10%' }}>Distance</th>
+                <th style={{ width: '8%' }}>Gender</th>
+                <th>Location</th>
+                <th>Category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedAndSorted.map(([groupKey, items]) => (
+                <React.Fragment key={groupKey}>
+                  <tr className="table-secondary">
+                    <td colSpan={7}>
+                      <strong>{groupBy === 'meeting' ? groupKey : formatDate(groupKey)}</strong>
+                    </td>
+                  </tr>
+                  {items.map(race => (
+                    <tr key={race._id}>
+                      <td>{formatDate(race.date)}</td>
+                      <td>{extractMeetingName(race)}</td>
+                      <td>
+                        <Link to={`/races/${race._id}`}>{extractDiscipline(race)}</Link>
+                      </td>
+                      <td>{race.distance} {race.distanceUnit}</td>
+                      <td>{race.gender}</td>
+                      <td>{race.location}</td>
+                      <td><Badge bg="primary">{race.category}</Badge></td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       )}
     </Container>
   );
