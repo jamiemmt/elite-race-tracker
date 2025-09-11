@@ -27,7 +27,7 @@ class DiamondLeague2025Accurate extends BaseScraper {
       { position: 7, athlete: 'Joseph Fahnbulleh', country: 'LBR', event: "Men's 200m", time: '20.46', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 8, athlete: 'Udodi Chudi Onwuzurike', country: 'NGR', event: "Men's 200m", time: '20.54', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
 
-      // Women's 200m
+      // Women's 200m - Official FloTrack Results
       { position: 1, athlete: 'Brittany Brown', country: 'USA', event: "Women's 200m", time: '22.13', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 2, athlete: 'Dina Asher-Smith', country: 'GBR', event: "Women's 200m", time: '22.18', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 3, athlete: 'Marie-Josée Ta Lou-Smith', country: 'CIV', event: "Women's 200m", time: '22.25', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
@@ -37,7 +37,7 @@ class DiamondLeague2025Accurate extends BaseScraper {
       { position: 7, athlete: 'Jessika Gbai', country: 'CIV', event: "Women's 200m", time: '22.71', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 8, athlete: 'Mckenzie Long', country: 'USA', event: "Women's 200m", time: '22.72', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
 
-      // Men's 100m
+      // Men's 100m - Official FloTrack Results
       { position: 1, athlete: 'Christian Coleman', country: 'USA', event: "Men's 100m", time: '9.97', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 2, athlete: 'Akani Simbine', country: 'RSA', event: "Men's 100m", time: '9.98', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 3, athlete: 'Ackeem Blake', country: 'JAM', event: "Men's 100m", time: '9.99', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
@@ -118,13 +118,25 @@ class DiamondLeague2025Accurate extends BaseScraper {
     const processedResults = results.map(result => {
       const timeInSeconds = this.convertTimeToSeconds(result.time);
       return {
-        ...result,
-        timeInSeconds,
+        athlete: {
+          name: result.athlete,
+          country: result.country,
+          gender: result.event.includes("Women's") ? 'Female' : 'Male'
+        },
+        race: {
+          name: `Zurich Diamond League Final 2025 - ${result.event}`,
+          date: new Date(result.date),
+          distance: this.getDistanceFromEvent(result.event),
+          distanceUnit: this.getDistanceUnitFromEvent(result.event),
+          gender: result.event.includes("Women's") ? 'Female' : 'Male',
+          location: `${result.venue}, Switzerland`,
+          category: 'Track',
+          isElite: true
+        },
+        finishTime: timeInSeconds,
         formattedTime: result.time,
-        raceKey: `${result.meeting} - ${result.event}`,
-        meetingName: result.meeting,
-        meetingDate: result.date,
-        venue: result.venue
+        position: result.position,
+        notes: ''
       };
     });
 
@@ -134,6 +146,25 @@ class DiamondLeague2025Accurate extends BaseScraper {
     }
 
     return processedResults;
+  }
+
+  getDistanceFromEvent(eventName) {
+    if (eventName.includes('100m')) return 100;
+    if (eventName.includes('200m')) return 200;
+    if (eventName.includes('400m')) return 400;
+    if (eventName.includes('800m')) return 800;
+    if (eventName.includes('1500m')) return 1500;
+    if (eventName.includes('3000m')) return 3000;
+    if (eventName.includes('5000m')) return 5000;
+    if (eventName.includes('10000m')) return 10000;
+    if (eventName.includes('110m Hurdles')) return 110;
+    if (eventName.includes('400m Hurdles')) return 400;
+    if (eventName.includes('3000m Steeplechase')) return 3000;
+    return 0;
+  }
+
+  getDistanceUnitFromEvent(eventName) {
+    return 'm'; // All events are in meters
   }
 
   convertTimeToSeconds(timeStr) {
