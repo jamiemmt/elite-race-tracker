@@ -112,6 +112,83 @@ class DiamondLeague2025Accurate extends BaseScraper {
       { position: 9, athlete: 'Agathe Guillemot', country: 'FRA', event: "Women's 1500m", time: '4:00.40', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 10, athlete: 'Marta Zenoni', country: 'ITA', event: "Women's 1500m", time: '4:00.71', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
       { position: 11, athlete: 'Joceline Wind', country: 'SUI', event: "Women's 1500m", time: '4:08.37', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' }
+      ,
+      // Men's 110m Hurdles
+      { position: 1, athlete: 'Cordell Tinch', country: 'USA', event: "Men's 110m Hurdles", time: '12.92', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Enrique Llopis', country: 'ESP', event: "Men's 110m Hurdles", time: '13.12', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Jamal Britt', country: 'USA', event: "Men's 110m Hurdles", time: '13.21', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Jason Joseph', country: 'SUI', event: "Men's 110m Hurdles", time: '13.22', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Freddie Crittenden', country: 'USA', event: "Men's 110m Hurdles", time: '13.23', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Trey Cunningham', country: 'USA', event: "Men's 110m Hurdles", time: '13.32', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Orlando Bennett', country: 'JAM', event: "Men's 110m Hurdles", time: '13.35', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Rachid Muratake', country: 'JPN', event: "Men's 110m Hurdles", time: '14.39', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Men's 3000m
+      { position: 1, athlete: 'Jimmy Gressier', country: 'FRA', event: "Men's 3000m", time: '7:36.78', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Grant Fisher', country: 'USA', event: "Men's 3000m", time: '7:36.81', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Andreas Almgren', country: 'SWE', event: "Men's 3000m", time: '7:36.82', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Mohamed Abdilaahi', country: 'GER', event: "Men's 3000m", time: '7:37.31', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Biniam Mehary', country: 'ETH', event: "Men's 3000m", time: '7:37.33', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Graham Blanks', country: 'USA', event: "Men's 3000m", time: '7:38.15', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'George Mills', country: 'GBR', event: "Men's 3000m", time: '7:38.71', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Samuel Tefera', country: 'ETH', event: "Men's 3000m", time: '7:38.93', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 9, athlete: 'Jonas Raess', country: 'SUI', event: "Men's 3000m", time: '7:46.82', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 10, athlete: 'Mike Foppen', country: 'NED', event: "Men's 3000m", time: '7:47.04', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 11, athlete: 'Kuma Girma', country: 'ETH', event: "Men's 3000m", time: '7:51.33', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Men's 400m Hurdles
+      { position: 1, athlete: 'Karsten Warholm', country: 'NOR', event: "Men's 400m Hurdles", time: '46.70', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Abderrahman Samba', country: 'QAT', event: "Men's 400m Hurdles", time: '47.45', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Ezekiel Nathaniel', country: 'NGR', event: "Men's 400m Hurdles", time: '47.56', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'CJ Allen', country: 'USA', event: "Men's 400m Hurdles", time: '48.00', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Matheus Lima', country: 'BRA', event: "Men's 400m Hurdles", time: '48.21', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Trevor Bassitt', country: 'USA', event: "Men's 400m Hurdles", time: '48.29', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Alastair Chalmers', country: 'GBR', event: "Men's 400m Hurdles", time: '48.88', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Berke Akçam', country: 'TUR', event: "Men's 400m Hurdles", time: '49.01', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Women's 400m Hurdles
+      { position: 1, athlete: 'Femke Bol', country: 'NED', event: "Women's 400m Hurdles", time: '52.18', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Emma Zapletalová', country: 'SVK', event: "Women's 400m Hurdles", time: '53.18', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Andrenette Knight', country: 'JAM', event: "Women's 400m Hurdles", time: '53.76', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Gianna Woodruff', country: 'PAN', event: "Women's 400m Hurdles", time: '54.24', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Naomi van den Broeck', country: 'BEL', event: "Women's 400m Hurdles", time: '54.83', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Amalie Iuel', country: 'NOR', event: "Women's 400m Hurdles", time: '55.34', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Ayomide Folorunso', country: 'ITA', event: "Women's 400m Hurdles", time: '55.77', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Zenéy van der Walt', country: 'RSA', event: "Women's 400m Hurdles", time: '56.90', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Women's 100m Hurdles
+      { position: 1, athlete: 'Ackera Nugent', country: 'JAM', event: "Women's 100m Hurdles", time: '12.30', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Ditaji Kambundji', country: 'SUI', event: "Women's 100m Hurdles", time: '12.40', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Grace Stark', country: 'USA', event: "Women's 100m Hurdles", time: '12.44', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Danielle Williams', country: 'JAM', event: "Women's 100m Hurdles", time: '12.44', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Nadine Visser', country: 'NED', event: "Women's 100m Hurdles", time: '12.45', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Tonea Marshall', country: 'USA', event: "Women's 100m Hurdles", time: '12.49', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Devynne Charlton', country: 'BAH', event: "Women's 100m Hurdles", time: '12.52', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Kendra Harrison', country: 'USA', event: "Women's 100m Hurdles", time: '12.72', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 9, athlete: 'Selina von Jackowski', country: 'SUI', event: "Women's 100m Hurdles", time: '13.24', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Men's 3000m Steeplechase
+      { position: 1, athlete: 'Frederik Ruppert', country: 'GER', event: "Men's 3000m Steeplechase", time: '8:09.02', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Edmund Serem', country: 'KEN', event: "Men's 3000m Steeplechase", time: '8:09.96', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Salaheddine Ben Yazide', country: 'MAR', event: "Men's 3000m Steeplechase", time: '8:14.10', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Daniel Arce', country: 'ESP', event: "Men's 3000m Steeplechase", time: '8:14.36', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Nicolas-Marie Daru', country: 'FRA', event: "Men's 3000m Steeplechase", time: '8:18.68', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Isaac Updike', country: 'USA', event: "Men's 3000m Steeplechase", time: '8:19.47', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Mohamed Amin Jhinaoui', country: 'TUN', event: "Men's 3000m Steeplechase", time: '8:24.75', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Abrham Sime', country: 'ETH', event: "Men's 3000m Steeplechase", time: '8:28.13', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 9, athlete: 'Tim van de Velde', country: 'BEL', event: "Men's 3000m Steeplechase", time: '8:31.52', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+
+      // Women's 3000m
+      { position: 1, athlete: 'Aleshign Baweke', country: 'ETH', event: "Women's 3000m", time: '8:40.56', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 2, athlete: 'Josette Andrews', country: 'USA', event: "Women's 3000m", time: '8:40.95', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 3, athlete: 'Likina Amebaw', country: 'ETH', event: "Women's 3000m", time: '8:41.06', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 4, athlete: 'Georgia Griffith', country: 'AUS', event: "Women's 3000m", time: '8:41.36', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 5, athlete: 'Fantaye Belayneh', country: 'ETH', event: "Women's 3000m", time: '8:42.35', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 6, athlete: 'Marta García', country: 'ESP', event: "Women's 3000m", time: '8:42.63', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 7, athlete: 'Caroline Nyaga', country: 'KEN', event: "Women's 3000m", time: '8:43.43', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 8, athlete: 'Hannah Nuttall', country: 'GBR', event: "Women's 3000m", time: '8:44.74', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 9, athlete: 'Rose Davies', country: 'AUS', event: "Women's 3000m", time: '8:46.11', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' },
+      { position: 10, athlete: 'Hirut Meshesha', country: 'ETH', event: "Women's 3000m", time: '8:52.48', venue: 'Zurich', date: '2025-08-28', meeting: 'Diamond League Final 2025' }
     ];
 
     // Convert times to seconds and format properly
@@ -281,7 +358,21 @@ class DiamondLeague2025Accurate extends BaseScraper {
         console.log(`Deleted ${corruptedTimeResults.length} results with corrupted times`);
       }
 
-      // Step 5: Clean up orphaned races and athletes
+      // Step 5: Remove existing Zurich Diamond League Final 2025 races to avoid duplicates/typos
+      const zurichRaces = await Race.find({
+        name: { $regex: /^Zurich Diamond League Final 2025\s*-\s*/ },
+      });
+
+      if (zurichRaces.length > 0) {
+        const zurichRaceIds = zurichRaces.map(r => r._id);
+        const delRes = await Result.deleteMany({ race: { $in: zurichRaceIds } });
+        deletedResults += delRes.deletedCount || 0;
+        const delRaces = await Race.deleteMany({ _id: { $in: zurichRaceIds } });
+        deletedRaces += delRaces.deletedCount || zurichRaces.length;
+        console.log(`Deleted Zurich Final 2025 races: ${zurichRaces.length}, results: ${delRes.deletedCount || 0}`);
+      }
+
+      // Step 6: Clean up orphaned races and athletes
       const orphanedRaces = await Race.find({
         _id: { $nin: await Result.distinct('race') }
       });
