@@ -113,7 +113,7 @@ class WorldAthletics2025 extends BaseScraper {
       const html = await this.fetchHtml(eventUrl);
       const $ = this.parseHtml(html);
       const eventInfo = this.parseEventInfo($);
-      const results = [];
+      let results = [];
 
       const tableSelectors = [
         '.results-table tbody tr',
@@ -159,6 +159,15 @@ class WorldAthletics2025 extends BaseScraper {
         if (found && results.length > 0) break;
       }
 
+      // If no results were parsed from static table, try Next.js embedded JSON
+      if (results.length === 0) {
+        const nextData = this.extractNextData(html);
+        if (nextData) {
+          const jsonResults = this.extractResultsFromNextData(nextData, eventInfo);
+          if (jsonResults && jsonResults.length) results = jsonResults;
+        }
+      }
+
       return results;
     } catch (e) {
       console.error('getResults error:', e.message);
@@ -183,6 +192,16 @@ class WorldAthletics2025 extends BaseScraper {
           meetings.add(this.absoluteUrl(href));
         }
       });
+      // Also search in Next.js JSON in case links are not rendered server-side
+      const nextData = this.extractNextData(html);
+      if (nextData) {
+        const str = JSON.stringify(nextData);
+        const re = /"(\/competitions\/diamond-league\/calendar-results\/[0-9]+\/result)"/g;
+        let m;
+        while ((m = re.exec(str)) !== null) {
+          meetings.add(this.absoluteUrl(m[1]));
+        }
+      }
       return Array.from(meetings);
     } catch (e) {
       console.error('fetchDiamondLeagueMeetings error:', e.message);
@@ -205,11 +224,152 @@ class WorldAthletics2025 extends BaseScraper {
           }
         }
       });
+      // Also pull candidate links from Next.js JSON
+      const nextData = this.extractNextData(html);
+      if (nextData) {
+        const collect = (obj) => {
+          if (!obj) return;
+          if (typeof obj === 'string') {
+            if (/\/results\//i.test(obj) && /metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(obj)) {
+              links.add(this.absoluteUrl(obj));
+            }
+            return;
+          }
+          if (Array.isArray(obj)) {
+            obj.forEach(collect);
+            return;
+          }
+          if (typeof obj === 'object') {
+            for (const k of Object.keys(obj)) collect(obj[k]);
+          }
+        };
+        collect(nextData);
+      }
       return Array.from(links);
     } catch (e) {
       console.error('extractEventResultLinksFromMeeting error:', e.message);
       return [];
     }
+  }
+
+  extractNextData(html) {
+    try {
+      const m = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/);
+      if (m && m[1]) {
+        return JSON.parse(m[1]);
+      }
+      // Fallback: any script with application/json containing pageProps
+      const m2 = html.match(/<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?pageProps[\s\S]*?)<\/script>/);
+      if (m2 && m2[1]) {
+        return JSON.parse(m2[1]);
+      }
+    } catch (e) {
+      console.warn('extractNextData failed:', e.message);
+    }
+    return null;
+  }
+
+  extractResultsFromNextData(nextData, eventInfoFallback) {
+    const results = [];
+    try {
+      // Flatten search: collect arrays that look like result rows
+      const candidates = [];
+      const stack = [nextData];
+      while (stack.length) {
+        const node = stack.pop();
+        if (!node) continue;
+        if (Array.isArray(node)) {
+          if (node.length > 0 && this.looksLikeResultArray(node)) candidates.push(node);
+          for (const item of node) stack.push(item);
+        } else if (typeof node === 'object') {
+          for (const k of Object.keys(node)) stack.push(node[k]);
+        }
+      }
+
+      // Use the largest plausible candidate
+      let best = null;
+      for (const arr of candidates) {
+        if (!best || arr.length > best.length) best = arr;
+      }
+      if (!best) return [];
+
+      // Try to infer event metadata from siblings in JSON string
+      const jsonStr = JSON.stringify(nextData);
+      const titleMatch = jsonStr.match(/\"event\"\s*:\s*\"([^\"]+)\"/i) || jsonStr.match(/\"discipline\"\s*:\s*\"([^\"]+)\"/i);
+      const eventName = titleMatch ? titleMatch[1] : '';
+      const gender = /women/i.test(eventName) ? 'Female' : (/men/i.test(eventName) ? 'Male' : (eventInfoFallback.gender || 'Mixed'));
+      const distance = this.parseDistance(eventName) || eventInfoFallback.distance || 0;
+      const raceInfo = {
+        ...(eventInfoFallback || {}),
+        name: eventInfoFallback?.name || eventName || 'World Athletics Event',
+        gender,
+        distance,
+        distanceUnit: this.getDistanceUnit(distance),
+        category: 'Track',
+      };
+
+      let pos = 1;
+      for (const row of best) {
+        const mapped = this.mapResultRow(row, pos, raceInfo.gender);
+        if (mapped) {
+          results.push({
+            position: mapped.position,
+            athlete: { name: mapped.name, country: mapped.country, gender: raceInfo.gender },
+            race: { ...raceInfo },
+            formattedTime: mapped.formattedTime,
+            finishTime: this.convertTimeToSeconds(mapped.formattedTime),
+          });
+          pos++;
+        }
+      }
+    } catch (e) {
+      console.warn('extractResultsFromNextData failed:', e.message);
+    }
+    return results;
+  }
+
+  looksLikeResultArray(arr) {
+    try {
+      const a = arr[0];
+      if (!a) return false;
+      const s = JSON.stringify(a).toLowerCase();
+      // look for keys typically present in WA results JSON
+      return /place|rank|position/.test(s) && /(mark|time|result)/.test(s) && /(athlete|competitor|name|surname)/.test(s);
+    } catch (_) { return false; }
+  }
+
+  mapResultRow(row, defaultPosition, gender) {
+    try {
+      // Try multiple shapes
+      const obj = row || {};
+      let position = obj.place || obj.rank || obj.position || defaultPosition;
+      let formattedTime = obj.mark || obj.time || obj.result || obj.performance || '';
+      let name = '';
+      let country = obj.country || obj.nationality || (obj.competitor && (obj.competitor.country || obj.competitor.nationality)) || 'UNK';
+
+      if (obj.athlete) {
+        if (typeof obj.athlete === 'string') name = obj.athlete;
+        else if (obj.athlete.fullName) name = obj.athlete.fullName;
+        else if (obj.athlete.name) name = obj.athlete.name;
+        else if (obj.athlete.surname || obj.athlete.givenName) name = `${obj.athlete.givenName || ''} ${obj.athlete.surname || ''}`.trim();
+      }
+      if (!name && obj.competitor) {
+        if (typeof obj.competitor === 'string') name = obj.competitor;
+        else if (obj.competitor.fullName) name = obj.competitor.fullName;
+        else if (obj.competitor.name) name = obj.competitor.name;
+        else if (obj.competitor.surname || obj.competitor.givenName) name = `${obj.competitor.givenName || ''} ${obj.competitor.surname || ''}`.trim();
+      }
+      if (!name && obj.name) name = obj.name;
+
+      // Extract numeric time from strings like "9.81 (WL)" or "3:30.12 NR"
+      if (formattedTime && typeof formattedTime === 'string') {
+        const m = formattedTime.match(/(\d+:)?\d+(:\d+)?(?:\.\d+)?/);
+        if (m) formattedTime = m[0];
+      }
+
+      if (!name || !formattedTime) return null;
+      return { position: Number(position) || defaultPosition, name, country, formattedTime };
+    } catch (_) { return null; }
   }
 
   generateSampleData(limit = 40) {

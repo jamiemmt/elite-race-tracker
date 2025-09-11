@@ -108,7 +108,19 @@ class DiamondLeagueDynamic extends BaseScraper {
       await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118 Safari/537.36');
 
       const targetUrl = directUrl || `${this.resultsUrl}?season=${encodeURIComponent(String(season))}`;
-      await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      // If we're on the SwissTiming site, give the SPA time to boot and fetch channels
+      if (/liveresults\./i.test(targetUrl)) {
+        try {
+          await Promise.race([
+            page.waitForResponse(r => /ps-cache\.web\.swisstiming\.com\/node\/db\//i.test(r.url()), { timeout: 15000 }),
+            page.waitForTimeout(8000)
+          ]);
+        } catch (_) {}
+      } else {
+        // Otherwise, allow the DL site to settle
+        await page.waitForTimeout(1500);
+      }
 
       // Handle cookie consent (Complianz)
       try {

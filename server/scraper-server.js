@@ -8,6 +8,7 @@ const scraperRoutes = require('./routes/scrapers');
 const racesRoutes = require('./routes/races');
 const scraperSchedulerRoutes = require('./routes/scraperScheduler');
 const bannedAthleteRoutes = require('./routes/bannedAthletes');
+const diamondLeague2025Routes = require('./routes/diamondLeague2025');
 
 // Load environment variables
 dotenv.config();
@@ -25,9 +26,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Connect to MongoDB if URI is provided
-if (process.env.MONGODB_URI) {
+const ENV_MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+if (ENV_MONGO_URI) {
   // Clean up and normalize MongoDB URI - handle potential issues
-  let mongoUri = process.env.MONGODB_URI.trim();
+  let mongoUri = ENV_MONGO_URI.trim();
   
   // Make sure we're using the srv format for Atlas
   if (mongoUri.includes('mongodb.net') && !mongoUri.startsWith('mongodb+srv://')) {
@@ -76,6 +78,7 @@ app.use('/api/scrapers', scraperRoutes);
 app.use('/api/races', racesRoutes);
 app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
 app.use('/api/banned-athletes', bannedAthleteRoutes);
+app.use('/api/diamond-league-2025', diamondLeague2025Routes);
 app.use('/api/results', require('./routes/results'));
 app.use('/api/athletes', require('./routes/athletes'));
 

@@ -1,542 +1,5 @@
-/**
- * Service for managing banned athlete detection and updates
- */
-
-const fs = require('fs');
-const path = require('path');
-const pdf = require('pdf-parse');
-const axios = require('axios');
-
-class BannedAthleteService {
-  constructor() {
-    this.tempDir = path.join(__dirname, '../temp');
-    this.aiuPdfUrl = 'https://www.athleticsintegrity.org/downloads/pdfs/disciplinary-process/en/Global-List-AUG_25.pdf';
-    this.aiuProvisionalUrl = 'https://www.athleticsintegrity.org/disciplinary-process/provisional-suspensions-in-force';
-    this.aiuFirstInstanceUrl = 'https://www.athleticsintegrity.org/disciplinary-process/first-instance-decisions';
-    
-    // Known banned athletes from Olympic medal stripping and major doping cases
-    this.knownBannedAthletes = [
-      // Russian state-sponsored doping program athletes
-      { name: 'Mariya Savinova', country: 'RUS', reason: 'Olympic 800m gold stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Doping violation', dateDetected: '2015' },
-      { name: 'Ekaterina Poistogova', country: 'RUS', reason: 'Olympic 800m bronze stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Doping violation', dateDetected: '2015' },
-      { name: 'Yulia Stepanova', country: 'RUS', reason: 'Whistleblower, previously banned', source: 'RUSADA/WADA', agency: 'RUSADA', banType: 'Doping violation', dateDetected: '2013' },
-      { name: 'Liliya Shobukhova', country: 'RUS', reason: 'Marathon results annulled', source: 'IAAF/AIU', agency: 'AIU', banType: 'Biological passport', dateDetected: '2014' },
-      
-      // BALCO scandal athletes
-      { name: 'Marion Jones', country: 'USA', reason: 'Olympic medals stripped (2000)', source: 'USADA/IOC', agency: 'USADA', banType: 'Steroid use', dateDetected: '2007' },
-      { name: 'Tim Montgomery', country: 'USA', reason: 'World record annulled', source: 'USADA', agency: 'USADA', banType: 'BALCO scandal', dateDetected: '2005' },
-      
-      // Other major cases
-      { name: 'Ben Johnson', country: 'CAN', reason: 'Olympic 100m gold stripped (1988)', source: 'IOC/IAAF', agency: 'IOC', banType: 'Stanozolol', dateDetected: '1988' },
-      { name: 'Justin Gatlin', country: 'USA', reason: 'Previously banned, returned', source: 'USADA', agency: 'USADA', banType: 'Testosterone', dateDetected: '2006' },
-      { name: 'Tyson Gay', country: 'USA', reason: 'Previously banned, returned', source: 'USADA', agency: 'USADA', banType: 'Steroid use', dateDetected: '2013' },
-      { name: 'Rita Jeptoo', country: 'KEN', reason: 'Boston/Chicago Marathon wins stripped', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2014' },
-      { name: 'Jemima Sumgong', country: 'KEN', reason: 'Olympic marathon gold, banned', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2017' },
-      
-      // Recent high-profile cases
-      { name: 'Shelby Houlihan', country: 'USA', reason: 'American record holder, banned', source: 'USADA', agency: 'USADA', banType: 'Nandrolone', dateDetected: '2021' },
-      { name: 'Ryan Crouser', country: 'USA', reason: 'Shot put, previously sanctioned', source: 'USADA', agency: 'USADA', banType: 'Whereabouts violation', dateDetected: '2013' },
-      
-      // Additional WADA/AIU cases
-      { name: 'Asbel Kiprop', country: 'KEN', reason: '1500m world champion banned', source: 'AIU/ADAK', agency: 'AIU', banType: 'EPO', dateDetected: '2019' },
-      { name: 'Rashid Ramzi', country: 'BRN', reason: 'Olympic 1500m gold stripped (2008)', source: 'WADA/IOC', agency: 'WADA', banType: 'CERA-EPO', dateDetected: '2009' },
-      { name: 'Bahrain 4x400m team', country: 'BRN', reason: 'Olympic relay gold stripped (2012)', source: 'WADA/IOC', agency: 'WADA', banType: 'Steroid use', dateDetected: '2019' },
-    ];
-  }
-
-  /**
-   * Get the known banned athletes list
-   */
-  getKnownBannedAthletes() {
-    return this.knownBannedAthletes;
-  }
-
-  /**
-   * Parse AIU provisional suspensions web page
-   */
-  async parseProvisionalSuspensions() {
-    try {
-      console.log('Fetching AIU provisional suspensions...');
-      
-      const response = await axios.get(this.aiuProvisionalUrl, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; CleanSoFar/1.0)'
-        }
-      });
-
-      const provisionalAthletes = this.extractAthletesFromHtml(response.data, 'provisional');
-      console.log(`Found ${provisionalAthletes.length} provisionally suspended athletes`);
-      return provisionalAthletes;
-      
-    } catch (error) {
-      console.error('Error fetching provisional suspensions:', error.message);
-      return [];
-    }
-  }
-
-  /**
-   * Parse AIU first instance decisions web page
-   */
-  async parseFirstInstanceDecisions() {
-    try {
-      console.log('Fetching AIU first instance decisions...');
-      
-      const response = await axios.get(this.aiuFirstInstanceUrl, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; CleanSoFar/1.0)'
-        }
-      });
-
-      const firstInstanceAthletes = this.extractAthletesFromHtml(response.data, 'first_instance');
-      console.log(`Found ${firstInstanceAthletes.length} first instance decision athletes`);
-      return firstInstanceAthletes;
-      
-    } catch (error) {
-      console.error('Error fetching first instance decisions:', error.message);
-      return [];
-    }
-  }
-
-  /**
-   * Extract athlete information from AIU HTML pages
-   */
-  extractAthletesFromHtml(html, banStatus) {
-    const athletes = [];
-    
-    try {
-      // Look for athlete names in links - AIU pages have athlete names as links
-      const linkRegex = /<a[^>]*href="[^"]*"[^>]*>(.*?)<\/a>/gs;
-      const nameMatches = [];
-      
-      let linkMatch;
-      while ((linkMatch = linkRegex.exec(html)) !== null) {
-        const linkText = linkMatch[1]
-          .replace(/<[^>]*>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .trim();
-        
-        // Check if this looks like an athlete name (contains letters, not just dates/numbers)
-        if (linkText && 
-            linkText.length > 3 && 
-            linkText.length < 50 && // Not too long
-            /^[A-Z][a-zA-Z\s\-'\.]+$/.test(linkText) && // Proper name format
-            !linkText.match(/^\d/) && // Doesn't start with number
-            !linkText.match(/\d{2}\/\d{2}\/\d{4}/) && // No dates
-            !linkText.match(/^(DQ|results|since|from|until|power|of|respect)$/i) && // Not common text
-            !linkText.includes('bit.ly') &&
-            !linkText.includes('Decision') &&
-            !linkText.includes('pdf') &&
-            !linkText.includes('#') &&
-            linkText.split(' ').length <= 5) { // Reasonable number of words
-          nameMatches.push(linkText);
-        }
-      }
-      
-      // Also try to extract from table structure with better parsing
-      const tableRowRegex = /<tr[^>]*>(.*?)<\/tr>/gs;
-      let rowMatch;
-      while ((rowMatch = tableRowRegex.exec(html)) !== null) {
-        const rowHtml = rowMatch[1];
-        
-        // Skip header rows
-        if (rowHtml.toLowerCase().includes('<th') || 
-            rowHtml.toLowerCase().includes('name') ||
-            rowHtml.toLowerCase().includes('athlete')) {
-          continue;
-        }
-        
-        const cellRegex = /<td[^>]*>(.*?)<\/td>/gs;
-        const cells = [];
-        
-        let cellMatch;
-        while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-          const cellText = cellMatch[1]
-            .replace(/<[^>]*>/g, '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .trim();
-          cells.push(cellText);
-        }
-        
-        // Look for valid athlete data in cells
-        if (cells.length >= 2) {
-          for (let i = 0; i < cells.length - 1; i++) {
-            const potentialName = cells[i];
-            const potentialCountry = cells[i + 1];
-            
-            // Check if this looks like a valid athlete name and country
-            if (potentialName && 
-                potentialCountry &&
-                potentialName.length > 3 &&
-                potentialCountry.length >= 2 &&
-                potentialCountry.length <= 4 &&
-                /[a-zA-Z]/.test(potentialName) &&
-                !potentialName.match(/^\d{2}\/\d{2}\/\d{4}$/) &&
-                potentialCountry.match(/^[A-Z]{2,4}$/)) {
-              
-              nameMatches.push(`${potentialName}|${potentialCountry}`);
-              break;
-            }
-          }
-        }
-      }
-      
-      // Process collected names
-      for (const nameData of nameMatches) {
-        let name, country, violation = 'Various violations';
-        
-        if (nameData.includes('|')) {
-          [name, country] = nameData.split('|');
-        } else {
-          name = nameData;
-          country = 'UNK'; // Unknown country
-        }
-        
-        // Clean up the name
-        name = this.formatName(name);
-        
-        // Skip invalid entries
-        if (!name || 
-            name.length < 3 || 
-            name.length > 50 ||
-            name.match(/^\d/) ||
-            name.match(/\d{2}\/\d{2}\/\d{4}/) ||
-            name.includes('#') ||
-            name.toLowerCase().includes('decision') ||
-            name.toLowerCase().includes('results') ||
-            name.toLowerCase().includes('power') ||
-            !name.match(/^[A-Z][a-zA-Z\s\-'\.]+$/)) {
-          continue;
-        }
-        
-        athletes.push({
-          name: name,
-          country: country.toUpperCase(),
-          banSource: 'AIU Web',
-          banAgency: 'AIU',
-          banType: violation,
-          banReason: `${banStatus === 'provisional' ? 'Provisional suspension' : 'First instance decision'}: ${violation}`,
-          banDateDetected: new Date().getFullYear().toString(),
-          banStatus: banStatus,
-          isBanned: banStatus === 'first_instance',
-          isProvisionallyBanned: banStatus === 'provisional'
-        });
-      }
-      
-      // Remove duplicates based on name and country
-      const uniqueAthletes = athletes.filter((athlete, index, self) => 
-        index === self.findIndex(a => a.name === athlete.name && a.country === athlete.country)
-      );
-      
-      console.log(`Extracted ${uniqueAthletes.length} unique athletes from ${banStatus} page`);
-      return uniqueAthletes;
-      
-    } catch (error) {
-      console.error('Error parsing HTML:', error.message);
-      return [];
-    }
-  }
-
-  /**
-   * Download and parse AIU banned athletes PDF
-   */
-  async downloadAndParseAiuList() {
-    try {
-      console.log('Downloading AIU banned athletes list...');
-      
-      // Ensure temp directory exists
-      if (!fs.existsSync(this.tempDir)) {
-        fs.mkdirSync(this.tempDir, { recursive: true });
-      }
-      
-      // Download PDF with timeout and smaller chunk size
-      const response = await axios.get(this.aiuPdfUrl, {
-        responseType: 'arraybuffer',
-        timeout: 15000, // 15 second timeout
-        maxContentLength: 10 * 1024 * 1024, // 10MB max
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; EliteRaceTracker/1.0)'
-        }
-      });
-      
-      // Parse PDF
-      const pdfBuffer = Buffer.from(response.data);
-      const pdfData = await pdf(pdfBuffer);
-      
-      // Extract athlete names and countries from text
-      const bannedAthletes = this.extractAthletesFromPdfText(pdfData.text);
-      
-      console.log(`Found ${bannedAthletes.length} banned athletes in AIU list`);
-      return bannedAthletes;
-      
-    } catch (error) {
-      console.error('Error downloading/parsing AIU list:', error.message);
-      // Return empty array if download fails, we'll use known banned list
-      return [];
-    }
-  }
-
-  /**
-   * Extract athlete names and countries from AIU PDF text
-   */
-  extractAthletesFromPdfText(text) {
-    const bannedAthletes = [];
-    const lines = text.split('\n');
-    
-    let currentAthlete = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Skip empty lines and headers
-      if (!line || line.includes('GLOBAL LIST') || line.includes('Page ') || line.includes('Athletics Integrity Unit')) {
-        continue;
-      }
-      
-      // Look for athlete entries (typically start with a name in caps)
-      if (line.match(/^[A-Z][A-Z\s,'-]+$/)) {
-        if (currentAthlete) {
-          bannedAthletes.push(currentAthlete);
-        }
-        
-        // Parse name and country
-        const parts = line.split(',');
-        if (parts.length >= 2) {
-          const name = parts[0].trim();
-          const country = parts[1].trim();
-          
-          currentAthlete = {
-            name: this.formatName(name),
-            country: country,
-            source: 'AIU GLIP',
-            agency: 'AIU',
-            banType: 'Various violations',
-            reason: 'Listed on AIU Global Banned List',
-            dateDetected: 'Various'
-          };
-        }
-      } else if (currentAthlete && line.includes('Ineligible until')) {
-        // Extract ban period
-        currentAthlete.banDetails = line;
-      }
-    }
-    
-    // Add the last athlete
-    if (currentAthlete) {
-      bannedAthletes.push(currentAthlete);
-    }
-    
-    console.log(`Parsed ${bannedAthletes.length} banned athletes from AIU list`);
-    return bannedAthletes;
-  }
-
-  /**
-   * Format athlete name from ALL CAPS to proper case
-   */
-  formatName(name) {
-    return name.toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }
-
-  /**
-   * Update athlete ban status in database using known list only
-   */
-  async updateAthleteBanStatusFromKnownList() {
-    try {
-      const Athlete = require('../models/Athlete');
-      const bannedAthletes = this.knownBannedAthletes;
-      let updatedCount = 0;
-      
-      for (const bannedAthlete of bannedAthletes) {
-        // Find matching athletes in database (fuzzy matching)
-        const athletes = await Athlete.find({
-          $or: [
-            { name: new RegExp(bannedAthlete.name, 'i') },
-            { name: new RegExp(bannedAthlete.name.replace(/\s+/g, '.*'), 'i') }
-          ],
-          country: bannedAthlete.country
-        });
-        
-        for (const athlete of athletes) {
-          const needsUpdate = !athlete.isBanned && !athlete.isProvisionallyBanned;
-          
-          if (needsUpdate) {
-            // Set ban status based on type
-            if (bannedAthlete.banStatus === 'provisional') {
-              athlete.isProvisionallyBanned = true;
-              athlete.banStatus = 'provisional';
-            } else {
-              athlete.isBanned = true;
-              athlete.banStatus = bannedAthlete.banStatus || 'permanent';
-            }
-            
-            athlete.banReason = bannedAthlete.reason;
-            athlete.banSource = bannedAthlete.source;
-            athlete.banAgency = bannedAthlete.agency;
-            athlete.banType = bannedAthlete.banType;
-            athlete.banDateDetected = bannedAthlete.dateDetected;
-            await athlete.save();
-            updatedCount++;
-            
-            const statusText = bannedAthlete.banStatus === 'provisional' ? 'provisionally suspended' : 'banned';
-            console.log(`Marked ${athlete.name} (${athlete.country}) as ${statusText} by ${bannedAthlete.agency}`);
-          }
-        }
-      }
-      
-      console.log(`Updated ban status for ${updatedCount} athletes`);
-      return { updated: updatedCount, total: bannedAthletes.length };
-    } catch (error) {
-      console.error('Error updating athlete ban status:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update athlete ban status in database
-   */
-  async updateAthleteBanStatus() {
-    try {
-      const bannedAthletes = await this.getAllBannedAthletes();
-      let updatedCount = 0;
-      
-      for (const bannedAthlete of bannedAthletes) {
-        // Find matching athletes in database (fuzzy matching)
-        const athletes = await Athlete.find({
-          $or: [
-            { name: new RegExp(bannedAthlete.name, 'i') },
-            { name: new RegExp(bannedAthlete.name.replace(/\s+/g, '.*'), 'i') }
-          ],
-          country: bannedAthlete.country
-        });
-        
-        for (const athlete of athletes) {
-          if (!athlete.isBanned) {
-            athlete.isBanned = true;
-            athlete.banReason = bannedAthlete.reason;
-            athlete.banSource = bannedAthlete.source || 'Known case';
-            await athlete.save();
-            updatedCount++;
-            console.log(`Marked ${athlete.name} (${athlete.country}) as banned`);
-          }
-        }
-      }
-      
-      console.log(`Updated ban status for ${updatedCount} athletes`);
-      return { updated: updatedCount, total: bannedAthletes.length };
-    } catch (error) {
-      console.error('Error updating athlete ban status:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if an athlete is banned
-   */
-  async isAthleteBanned(name, country) {
-    const allBanned = await this.getAllBannedAthletes();
-    return allBanned.some(banned => 
-      banned.name.toLowerCase().includes(name.toLowerCase()) && 
-      banned.country === country
-    );
-  }
-
-  /**
-   * Get ban statistics by agency/source
-   */
-  async getBanStatistics() {
-    try {
-      const Athlete = require('../models/Athlete');
-      const bannedAthletes = await Athlete.find({ isBanned: true });
-      
-      const stats = {
-        total: bannedAthletes.length,
-        byAgency: {},
-        byBanType: {},
-        byCountry: {},
-        bySource: {}
-      };
-
-      bannedAthletes.forEach(athlete => {
-        // Count by agency
-        const agency = athlete.banAgency || 'Unknown';
-        stats.byAgency[agency] = (stats.byAgency[agency] || 0) + 1;
-
-        // Count by ban type
-        const banType = athlete.banType || 'Unknown';
-        stats.byBanType[banType] = (stats.byBanType[banType] || 0) + 1;
-
-        // Count by country
-        const country = athlete.country || 'Unknown';
-        stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
-
-        // Count by source
-        const source = athlete.banSource || 'Unknown';
-        stats.bySource[source] = (stats.bySource[source] || 0) + 1;
-      });
-
-      return stats;
-    } catch (error) {
-      console.error('Error getting ban statistics:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get banned athletes from database with full source information
-   */
-  async getBannedAthletesFromDatabase() {
-    try {
-      const Athlete = require('../models/Athlete');
-      const bannedAthletes = await Athlete.find({ isBanned: true })
-        .select('name country banReason banSource banAgency banType banDateDetected')
-        .sort({ name: 1 });
-
-      return bannedAthletes.map(athlete => ({
-        name: athlete.name,
-        country: athlete.country,
-        reason: athlete.banReason,
-        source: athlete.banSource,
-        agency: athlete.banAgency,
-        banType: athlete.banType,
-        dateDetected: athlete.banDateDetected
-      }));
-    } catch (error) {
-      console.error('Error fetching banned athletes from database:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Clean up incorrectly parsed AIU entries (dates as names, etc.)
-   */
-  async cleanupInvalidAiuEntries() {
-    try {
-      const Athlete = require('../models/Athlete');
-      
-      // Find and remove entries with invalid names (dates, single letters, etc.)
-      const invalidEntries = await Athlete.find({
-        $or: [
-          { name: { $regex: /^\d{2}\/\d{2}\/\d{4}$/ } }, // Dates as names
-          { name: { $regex: /^\d+$/ } }, // Just numbers
-          { name: { $regex: /^[A-Z]{1,3}$/ } }, // Just country codes
-          { name: { $regex: /\d{2}\/\d{2}\/\d{4}/ } }, // Contains dates
-          { name: { $regex: /^#/ } }, // Starts with #
-          { name: { $in: ['BAKHAREVA S LAS T NI KOVA', 'GONZALES ROMERO', 'WATHTHAKANKANAMGE', '#power Of Respect'] } }, // Known bad entries
-          { country: { $in: ['MARYNA BEKH-ROMANCHUK', 'RONCER KIPKORIR KONGA', 'BLESSING OKAGBARE', 'MOHAMED KATIR', 'CELESTINE CHEPCHIRCHIR'] } }, // Names in country field
-          { banSource: 'AIU Web', name: { $regex: /^[A-Z\s]{50,}$/ } }, // Overly long garbled names
-          { banSource: 'AIU Web', name: { $not: { $regex: /^[A-Z][a-zA-Z\s\-'\.]+$/ } } } // Invalid name format
-        ]
-      });
+/*
+xx
       
       const deleteCount = await Athlete.deleteMany({
         $or: [
@@ -558,86 +21,128 @@ class BannedAthleteService {
     } catch (error) {
       console.error('Error cleaning up invalid AIU entries:', error);
       throw error;
-    }
-  }
 
-  /**
-   * Populate database with all current AIU banned athletes from live sources
-   */
-  async populateAllCurrentAiuAthletes() {
-    try {
-      const Athlete = require('../models/Athlete');
-      let totalAdded = 0;
-      let totalUpdated = 0;
-      const errors = [];
-      
-      console.log('Fetching all current AIU banned athletes from live sources...');
-      
-      // Get live data from all AIU sources
-      const [provisionalAthletes, firstInstanceAthletes, aiuPdfAthletes] = await Promise.allSettled([
-        this.parseProvisionalSuspensions(),
-        this.parseFirstInstanceDecisions(), 
-        this.downloadAndParseAiuList()
-      ]);
-      
-      // Combine all results
-      const allAiuAthletes = [];
-      
-      if (provisionalAthletes.status === 'fulfilled') {
-        allAiuAthletes.push(...provisionalAthletes.value);
-        console.log(`✓ Found ${provisionalAthletes.value.length} provisional suspensions`);
-      } else {
-        console.error('✗ Failed to fetch provisional suspensions:', provisionalAthletes.reason?.message);
-        errors.push('Provisional suspensions failed');
-      }
-      
-      if (firstInstanceAthletes.status === 'fulfilled') {
-        allAiuAthletes.push(...firstInstanceAthletes.value);
-        console.log(`✓ Found ${firstInstanceAthletes.value.length} first instance decisions`);
-      } else {
-        console.error('✗ Failed to fetch first instance decisions:', firstInstanceAthletes.reason?.message);
-        errors.push('First instance decisions failed');
-      }
-      
-      if (aiuPdfAthletes.status === 'fulfilled') {
-        allAiuAthletes.push(...aiuPdfAthletes.value);
-        console.log(`✓ Found ${aiuPdfAthletes.value.length} athletes from AIU PDF`);
-      } else {
-        console.error('✗ Failed to fetch AIU PDF:', aiuPdfAthletes.reason?.message);
-        errors.push('AIU PDF failed');
-      }
-      
-      console.log(`Total found: ${allAiuAthletes.length} athletes from AIU sources`);
-      
-      // Process each athlete
-      for (const bannedAthlete of allAiuAthletes) {
-        try {
-          // Skip athletes without proper name or country
-          if (!bannedAthlete.name || !bannedAthlete.country || bannedAthlete.name.length < 2) {
-            console.log(`Skipping invalid athlete: ${bannedAthlete.name || 'No name'} (${bannedAthlete.country || 'No country'})`);
-            continue;
+    console.log('Fetching all current AIU banned athletes from live sources...');
+
+    // Get live data from all AIU sources
+    const [provisionalAthletes, firstInstanceAthletes, aiuPdfAthletes] = await Promise.allSettled([
+      this.parseProvisionalSuspensions(),
+      this.parseFirstInstanceDecisions(), 
+      this.downloadAndParseAiuList()
+    ]);
+
+    // Combine all results
+    const allAiuAthletes = [];
+
+    if (provisionalAthletes.status === 'fulfilled') {
+      allAiuAthletes.push(...provisionalAthletes.value);
+      console.log(`✓ Found ${provisionalAthletes.value.length} provisional suspensions`);
+    } else {
+      console.error('✗ Failed to fetch provisional suspensions:', provisionalAthletes.reason?.message);
+      errors.push('Provisional suspensions failed');
+    }
+
+    if (firstInstanceAthletes.status === 'fulfilled') {
+      allAiuAthletes.push(...firstInstanceAthletes.value);
+      console.log(`✓ Found ${firstInstanceAthletes.value.length} first instance decisions`);
+    } else {
+      console.error('✗ Failed to fetch first instance decisions:', firstInstanceAthletes.reason?.message);
+      errors.push('First instance decisions failed');
+    }
+
+    if (aiuPdfAthletes.status === 'fulfilled') {
+      allAiuAthletes.push(...aiuPdfAthletes.value);
+      console.log(`✓ Found ${aiuPdfAthletes.value.length} athletes from AIU PDF`);
+    } else {
+      console.error('✗ Failed to fetch AIU PDF:', aiuPdfAthletes.reason?.message);
+      errors.push('AIU PDF failed');
+    }
+
+    console.log(`Total found: ${allAiuAthletes.length} athletes from AIU sources`);
+
+    // Process each athlete
+    for (const bannedAthlete of allAiuAthletes) {
+      try {
+        // Skip athletes without proper name or country
+        if (!bannedAthlete.name || !bannedAthlete.country || bannedAthlete.name.length < 2) {
+          console.log(`Skipping invalid athlete: ${bannedAthlete.name || 'No name'} (${bannedAthlete.country || 'No country'})`);
+          continue;
+        }
+
+        // Check if athlete already exists (case-insensitive name match)
+        const existingAthlete = await Athlete.findOne({
+          name: new RegExp(`^${bannedAthlete.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+          country: bannedAthlete.country
+        });
+
+        if (existingAthlete) {
+          // Update existing athlete with ban information
+          let updated = false;
+
+          if (!existingAthlete.isBanned && bannedAthlete.isBanned) {
+            existingAthlete.isBanned = bannedAthlete.isBanned;
+            updated = true;
           }
-          
-          // Check if athlete already exists (case-insensitive name match)
-          const existingAthlete = await Athlete.findOne({
-            name: new RegExp(`^${bannedAthlete.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
-            country: bannedAthlete.country
+
+          if (!existingAthlete.isProvisionallyBanned && bannedAthlete.isProvisionallyBanned) {
+            existingAthlete.isProvisionallyBanned = bannedAthlete.isProvisionallyBanned;
+            updated = true;
+          }
+
+          if (!existingAthlete.banReason && (bannedAthlete.banReason || bannedAthlete.reason)) {
+            existingAthlete.banReason = bannedAthlete.banReason || bannedAthlete.reason;
+            updated = true;
+          }
+
+          if (!existingAthlete.banSource && (bannedAthlete.banSource || bannedAthlete.source)) {
+            existingAthlete.banSource = bannedAthlete.banSource || bannedAthlete.source;
+            updated = true;
+          }
+
+          if (!existingAthlete.banAgency && (bannedAthlete.banAgency || bannedAthlete.agency)) {
+            existingAthlete.banAgency = bannedAthlete.banAgency || bannedAthlete.agency;
+            updated = true;
+          }
+
+          if (!existingAthlete.banType && bannedAthlete.banType) {
+            existingAthlete.banType = bannedAthlete.banType;
+            updated = true;
+          }
+
+          if (!existingAthlete.banDateDetected && (bannedAthlete.banDateDetected || bannedAthlete.dateDetected)) {
+            existingAthlete.banDateDetected = bannedAthlete.banDateDetected || bannedAthlete.dateDetected;
+            updated = true;
+          }
+
+          if (!existingAthlete.banStatus && bannedAthlete.banStatus) {
+            existingAthlete.banStatus = bannedAthlete.banStatus;
+            updated = true;
+          }
+
+          if (updated) {
+            await existingAthlete.save();
+            totalUpdated++;
+            console.log(`Updated ${existingAthlete.name} (${existingAthlete.country}) - ${bannedAthlete.banStatus || 'banned'}`);
+          }
+        } else {
+          // Create new athlete
+          const updateData = {
+            isBanned: bannedAthlete.isBanned || false,
+            isProvisionallyBanned: bannedAthlete.isProvisionallyBanned || false,
+            banReason: bannedAthlete.banReason || bannedAthlete.reason,
+            banSource: bannedAthlete.banSource || bannedAthlete.source,
+            banAgency: bannedAthlete.banAgency || bannedAthlete.agency,
+            banType: bannedAthlete.banType,
+            banDateDetected: bannedAthlete.banDateDetected || bannedAthlete.dateDetected,
+            banStatus: bannedAthlete.banStatus || 'cleared'
+          };
+
+          const newAthlete = new Athlete({
+            name: bannedAthlete.name,
+            country: bannedAthlete.country,
+            gender: 'Female', // Default to Female, will be updated when we have more data
+            ...updateData
           });
-          
-          if (existingAthlete) {
-            // Update existing athlete with ban information
-            let updated = false;
-            
-            if (!existingAthlete.isBanned && bannedAthlete.isBanned) {
-              existingAthlete.isBanned = bannedAthlete.isBanned;
-              updated = true;
-            }
-            
-            if (!existingAthlete.isProvisionallyBanned && bannedAthlete.isProvisionallyBanned) {
-              existingAthlete.isProvisionallyBanned = bannedAthlete.isProvisionallyBanned;
-              updated = true;
-            }
-            
             if (!existingAthlete.banReason && (bannedAthlete.banReason || bannedAthlete.reason)) {
               existingAthlete.banReason = bannedAthlete.banReason || bannedAthlete.reason;
               updated = true;
@@ -722,4 +227,11 @@ class BannedAthleteService {
   }
 }
 
+module.exports = BannedAthleteService;
+*/
+
+'use strict';
+// Deprecated wrapper: export the new implementation to maintain backward compatibility.
+const BannedAthleteService2 = require('./bannedAthleteService2');
+class BannedAthleteService extends BannedAthleteService2 {}
 module.exports = BannedAthleteService;
