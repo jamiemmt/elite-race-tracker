@@ -4,6 +4,7 @@
   "description": "Website for tracking elite race finish times with ban status",
   "main": "server/index.js",
   "scripts": {
+    "heroku-prebuild": "echo 'Heroku prebuild: cleaning node_modules and installing fresh deps' && rm -rf node_modules && npm ci",
     "start": "node server/scraper-server.js",
     "server": "nodemon server/scraper-server.js",
     "client": "cd client && npm start",
