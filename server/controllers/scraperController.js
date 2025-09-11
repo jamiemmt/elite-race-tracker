@@ -38,6 +38,35 @@ exports.runScraper = async (req, res) => {
 
     // Run the scraper
     const scrapeOptions = options || {};
+
+/**
+ * Programmatic API to run a scraper (without Express req/res)
+ * @param {string} source
+ * @param {Object} options
+ * @returns {Promise<{success: boolean, summary: Object}>}
+ */
+exports.runScraperProgrammatic = async (source, options = {}) => {
+  if (!source) {
+    throw new Error('Source parameter is required');
+  }
+
+  // Validate source exists
+  const availableScrapers = scrapers.listScrapers();
+  if (!availableScrapers.includes(source)) {
+    throw new Error(`Scraper for source "${source}" not found. Available scrapers: ${availableScrapers.join(', ')}`);
+  }
+
+  // Apply default options
+  const scrapeOptions = { ...options };
+  if (scrapeOptions.topN == null) {
+    scrapeOptions.topN = parseInt(process.env.SCRAPER_TOP_N || '20', 10);
+  }
+
+  // Run scraper and process the results
+  const results = await scrapers.scrapeResults(source, scrapeOptions);
+  const summary = await processResults(results, source, scrapeOptions);
+  return { success: true, summary };
+};
     if (scrapeOptions.topN == null) {
       scrapeOptions.topN = parseInt(process.env.SCRAPER_TOP_N || '20', 10);
     }

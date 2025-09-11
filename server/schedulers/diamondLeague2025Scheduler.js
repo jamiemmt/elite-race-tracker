@@ -148,7 +148,7 @@ class DiamondLeague2025Scheduler {
         console.log(`Running Diamond League ${meeting.name} 2025 scraper...`);
         
         try {
-          const result = await scraperController.runScraper(meeting.scraper, {
+          const result = await scraperController.runScraperProgrammatic(meeting.scraper, {
             topN: 100, // Capture all finishers
             cleanup: false // Don't cleanup unless specifically needed
           });
@@ -212,7 +212,7 @@ class DiamondLeague2025Scheduler {
     };
 
     try {
-      const result = await scraperController.runScraper(meeting.scraper, defaultOptions);
+      const result = await scraperController.runScraperProgrammatic(meeting.scraper, defaultOptions);
       console.log(`Diamond League ${meeting.name} 2025 scraper completed:`, result.summary);
       return result;
     } catch (error) {
