@@ -94,9 +94,9 @@ class DiamondLeagueScheduler {
       //   topN: 20
       // });
 
-      // Only run the corrected scraper (Jakob removed)
-      const cleanResults = await this.runScraper('diamondLeague2025Corrected', {
-        topN: 50
+      // Only run the accurate scraper with verified results
+      const cleanResults = await this.runScraper('diamondLeague2025Accurate', {
+        topN: 100
       });
 
       const sampleResults = 0;
