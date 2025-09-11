@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Badge, Spinner, Alert, Table } from 'react-bootstrap';
+import { Container, Row, Col, Button, Form, Badge, Spinner, Alert, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaSearch, FaPlus, FaCalendarAlt, FaMapMarkerAlt, FaRunning } from 'react-icons/fa';
+import { FaSearch, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
 
 const Races = () => {
