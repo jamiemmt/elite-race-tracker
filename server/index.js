@@ -38,6 +38,7 @@ app.use('/api/clean-results', require('./routes/cleanResults'));
 app.use('/api/reset-diamond-league', require('./routes/resetDiamondLeague'));
 app.use('/api/complete-reset', require('./routes/completeReset'));
 app.use('/api/nuke-database-and-reload', require('./routes/nukeDatabaseAndReload'));
+app.use('/api/cleanup-artifacts', require('./routes/cleanupArtifacts'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
