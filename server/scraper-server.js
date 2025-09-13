@@ -8,6 +8,7 @@ const scraperRoutes = require('./routes/scrapers');
 const racesRoutes = require('./routes/races');
 const scraperSchedulerRoutes = require('./routes/scraperScheduler');
 const bannedAthleteRoutes = require('./routes/bannedAthletes');
+const cleanupRoutes = require('./routes/cleanup');
 const diamondLeague2025Routes = require('./routes/diamondLeague2025');
 
 // Load environment variables
@@ -79,6 +80,7 @@ app.use('/api/races', racesRoutes);
 app.use('/api/scraper-scheduler', scraperSchedulerRoutes);
 app.use('/api/banned-athletes', bannedAthleteRoutes);
 app.use('/api/diamond-league-2025', diamondLeague2025Routes);
+app.use('/api/cleanup', cleanupRoutes);
 app.use('/api/results', require('./routes/results'));
 app.use('/api/athletes', require('./routes/athletes'));
 

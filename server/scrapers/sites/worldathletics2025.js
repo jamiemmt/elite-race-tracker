@@ -206,7 +206,10 @@ class WorldAthletics2025 extends BaseScraper {
 
       // If no results were parsed from static table, try Next.js embedded JSON
       if (results.length === 0) {
-        const nextData = this.extractNextData(html);
+        let nextData = this.extractNextData(html);
+        if (!nextData && useProxyRender) {
+          nextData = await this.fetchNextDataSmart(eventUrl, useProxyRender);
+        }
         if (nextData) {
           const jsonResults = this.extractResultsFromNextData(nextData, eventInfo);
           if (jsonResults && jsonResults.length) results = jsonResults;
@@ -238,7 +241,10 @@ class WorldAthletics2025 extends BaseScraper {
         }
       });
       // Also search in Next.js JSON in case links are not rendered server-side
-      const nextData = this.extractNextData(html);
+      let nextData = this.extractNextData(html);
+      if (!nextData && useProxyRender) {
+        nextData = await this.fetchNextDataSmart(path, useProxyRender);
+      }
       if (nextData) {
         const str = JSON.stringify(nextData);
         const re = /"(\/competitions\/diamond-league\/calendar-results\/[0-9]+\/result)"/g;
@@ -263,19 +269,24 @@ class WorldAthletics2025 extends BaseScraper {
       $('a').each((_, a) => {
         const href = $(a).attr('href') || '';
         const text = ($(a).text() || '').toLowerCase();
-        if (/results|final|heats|semi|qualification/.test(text) || /\/results\//i.test(href)) {
+        const looksLikeResultPath = /\/(result|results)\b/i.test(href) || /calendar-results\/\d+\/result/i.test(href);
+        if (/results|final|heats|semi|qualification/.test(text) || looksLikeResultPath) {
           if (/metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(href + ' ' + text)) {
             links.add(this.absoluteUrl(href));
           }
         }
       });
       // Also pull candidate links from Next.js JSON
-      const nextData = this.extractNextData(html);
+      let nextData = this.extractNextData(html);
+      if (!nextData && useProxyRender) {
+        nextData = await this.fetchNextDataSmart(meetingUrl, useProxyRender);
+      }
       if (nextData) {
         const collect = (obj) => {
           if (!obj) return;
           if (typeof obj === 'string') {
-            if (/\/results\//i.test(obj) && /metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(obj)) {
+            const looksLikeResultPath = /\/(result|results)\b/i.test(obj) || /calendar-results\/\d+\/result/i.test(obj);
+            if (looksLikeResultPath && /metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(obj)) {
               links.add(this.absoluteUrl(obj));
             }
             return;

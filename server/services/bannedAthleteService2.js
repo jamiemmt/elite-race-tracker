@@ -234,10 +234,13 @@ class BannedAthleteService {
       };
 
       const addAthlete = (name, country = 'UNK') => {
+        const cc = this.normalizeCountryCode(country);
+        // Require a valid country code to avoid non-athlete garbage entries
+        if (!cc || cc === 'UNK') return;
         const formatted = this.formatName(name);
         athletes.push({
           name: formatted,
-          country: String(country).toUpperCase(),
+          country: cc,
           banSource: 'AIU Web',
           banAgency: 'AIU',
           banType: 'Various violations',
@@ -266,17 +269,36 @@ class BannedAthleteService {
         }
       });
 
-      // 2) Parse content links (exclude typical nav areas)
+      // 2) Parse content links (exclude typical nav areas) – only when a country code can be inferred
       $('a').each((_, a) => {
-        // Skip nav/header/footer/aside ancestors
         const $a = $(a);
         if ($a.parents('nav,header,footer,aside').length) return;
         const href = ($a.attr('href') || '').toLowerCase();
-        // Focus on disciplinary process pages
         if (href && !href.includes('/disciplinary-process/')) return;
         const text = $a.text().replace(/\s+/g, ' ').trim();
         if (!looksLikeName(text)) return;
-        addAthlete(text, 'UNK');
+        // Infer country from nearest content block
+        const $block = $a.closest('article,section,div,li') || $a.parent();
+        const blockText = ($block && $block.text() || '').replace(/\s+/g, ' ').trim();
+        let inferred = 'UNK';
+        const ignoreTokens = new Set(['EPO','AIU','ABP','WADA','USADA','RUSADA','UKAD','NADA','CNADA','ADAK','JAAA','IAAF','WA','IOC','CAS']);
+        const parts = blockText.split(/\s+/).filter(Boolean);
+        for (const rawPart of parts) {
+          const part = rawPart.replace(/[^A-Za-z]/g, '');
+          if (!part) continue;
+          if (/^[A-Z]{3,}$/.test(part)) continue;
+          const ccTry = this.normalizeCountryCode(part);
+          if (ccTry && ccTry !== 'UNK' && ccTry.length === 3 && part.toUpperCase() !== ccTry) { inferred = ccTry; break; }
+        }
+        if (inferred === 'UNK') {
+          const mccAll = blockText.match(/\b([A-Z]{3})\b/g) || [];
+          for (const tok of mccAll) {
+            if (ignoreTokens.has(tok)) continue;
+            const ccTry = this.normalizeCountryCode(tok);
+            if (ccTry && ccTry !== 'UNK' && /^[A-Z]{3}$/.test(ccTry)) { inferred = ccTry; break; }
+          }
+        }
+        addAthlete(text, inferred);
       });
 
       // 3) Also scan headings and common text containers for names; infer country from nearby text

@@ -54,6 +54,41 @@ class RenderService {
       try { await context.close(); } catch (_) {}
     }
   }
+
+  /**
+   * Extract Next.js __NEXT_DATA__ JSON from a dynamic page.
+   * @param {string} url
+   * @param {{timeoutMs?: number}} options
+   * @returns {Promise<any|null>}
+   */
+  async renderNextData(url, options = {}) {
+    const { timeoutMs = 30000 } = options;
+    const browser = await this.getBrowser();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
+      // Try direct window var
+      const data = await page.evaluate(() => {
+        try { return window.__NEXT_DATA__ || null; } catch (_) { return null; }
+      });
+      if (data) return data;
+      // Fallback: parse script tag content
+      const scriptContent = await page.evaluate(() => {
+        try {
+          const el = document.querySelector('script#__NEXT_DATA__');
+          return el ? el.textContent : null;
+        } catch (_) { return null; }
+      });
+      if (scriptContent) {
+        try { return JSON.parse(scriptContent); } catch (_) {}
+      }
+      return null;
+    } finally {
+      try { await page.close(); } catch (_) {}
+      try { await context.close(); } catch (_) {}
+    }
+  }
 }
 
 module.exports = new RenderService();
