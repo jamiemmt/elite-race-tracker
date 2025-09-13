@@ -368,7 +368,18 @@ class DiamondLeague2025Accurate extends BaseScraper {
         console.log(`Deleted Zurich Final 2025 races: ${zurichRaces.length}, results: ${delRes.deletedCount || 0}`);
       }
 
-      // Step 6: Clean up orphaned races and athletes
+      // Step 6: Remove placeholder World Athletics Championships 2025 sample races (not yet started)
+      const worlds25 = await Race.find({ name: { $regex: /^World Athletics Championships 2025\s*-\s*/ } });
+      if (worlds25.length > 0) {
+        const ids = worlds25.map(r => r._id);
+        const delWRes = await Result.deleteMany({ race: { $in: ids } });
+        deletedResults += delWRes.deletedCount || 0;
+        const delWRaces = await Race.deleteMany({ _id: { $in: ids } });
+        deletedRaces += delWRaces.deletedCount || worlds25.length;
+        console.log(`Deleted placeholder Worlds 2025 races: ${worlds25.length}, results: ${delWRes.deletedCount || 0}`);
+      }
+
+      // Step 7: Clean up orphaned races and athletes
       const orphanedRaces = await Race.find({
         _id: { $nin: await Result.distinct('race') }
       });
@@ -380,7 +391,8 @@ class DiamondLeague2025Accurate extends BaseScraper {
       }
 
       const orphanedAthletes = await Athlete.find({
-        _id: { $nin: await Result.distinct('athlete') }
+        _id: { $nin: await Result.distinct('athlete') },
+        isBanned: { $ne: true }
       });
       
       if (orphanedAthletes.length > 0) {
