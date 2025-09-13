@@ -19,7 +19,7 @@ const Races = () => {
   const [distances, setDistances] = useState({});
   const [groupBy, setGroupBy] = useState('meeting'); // 'meeting' | 'date'
   const [disciplineAsc, setDisciplineAsc] = useState(true);
-  const [dateAsc, setDateAsc] = useState(true);
+  const [dateAsc, setDateAsc] = useState(false); // default to most recent first
 
   useEffect(() => {
     const fetchRaces = async () => {
