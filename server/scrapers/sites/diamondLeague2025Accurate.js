@@ -217,11 +217,7 @@ class DiamondLeague2025Accurate extends BaseScraper {
       };
     });
 
-    // Apply topN limit if specified
-    if (topN && topN > 0) {
-      return processedResults.slice(0, topN);
-    }
-
+    // Always return full curated list; per-event limiting is handled in controller
     return processedResults;
   }
 
