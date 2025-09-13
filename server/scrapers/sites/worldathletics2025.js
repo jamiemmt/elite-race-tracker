@@ -1,4 +1,6 @@
 const BaseScraper = require('../BaseScraper');
+const axios = require('axios');
+const renderService = require('../../services/renderService');
 
 /**
  * World Athletics 2025 scraper (Diamond League + WA Championships ready)
@@ -9,6 +11,49 @@ class WorldAthletics2025 extends BaseScraper {
   constructor() {
     super('worldathletics2025', 'https://worldathletics.org');
     this.resultsBaseUrl = '/competitions/';
+  }
+
+  async fetchHtmlSmart(url, useProxyRender = false) {
+    // Try direct fetch first
+    try {
+      const html = await this.fetchHtml(url);
+      // If content appears non-empty, return
+      if (html && html.length > 2000) return html;
+      // If very small and proxy requested, fall through to proxy
+    } catch (e) {
+      // If blocked and proxy requested, try proxy
+      if (!useProxyRender) throw e;
+    }
+
+    if (!useProxyRender) {
+      // Return empty string to indicate failure without proxy
+      return '';
+    }
+
+    // Try headless render first (preferred for official sources)
+    try {
+      const absolute = this.absoluteUrl(url);
+      const html = await renderService.renderToHtml(absolute, { waitSelector: 'table, .results, .results-table' });
+      if (html && html.length > 2000) {
+        return html;
+      }
+    } catch (eHeadless) {
+      console.warn('Headless render failed, falling back to proxy:', eHeadless.message);
+    }
+
+    // Fallback via r.jina.ai (readability proxy for dynamic sites)
+    try {
+      const absolute = this.absoluteUrl(url);
+      const proxyUrl = `https://r.jina.ai/http://${absolute.replace(/^https?:\/\//, '')}`;
+      const { data } = await axios.get(proxyUrl, {
+        timeout: 30000,
+        headers: { 'User-Agent': 'Elite Race Tracker/1.0 (https://eliteracetracker.com)' },
+      });
+      return data || '';
+    } catch (e2) {
+      console.warn('fetchHtmlSmart proxy fetch failed:', e2.message);
+      return '';
+    }
   }
 
   parseGender(eventName) {
@@ -108,9 +153,9 @@ class WorldAthletics2025 extends BaseScraper {
     };
   }
 
-  async getResults(eventUrl) {
+  async getResults(eventUrl, useProxyRender = false) {
     try {
-      const html = await this.fetchHtml(eventUrl);
+      const html = await this.fetchHtmlSmart(eventUrl, useProxyRender);
       const $ = this.parseHtml(html);
       const eventInfo = this.parseEventInfo($);
       let results = [];
@@ -180,10 +225,10 @@ class WorldAthletics2025 extends BaseScraper {
     return u.startsWith('http') ? u : `${this.baseUrl}${u.startsWith('/') ? '' : '/'}${u}`;
   }
 
-  async fetchDiamondLeagueMeetings(season = 2025) {
+  async fetchDiamondLeagueMeetings(season = 2025, useProxyRender = false) {
     try {
       const path = `/competitions/diamond-league/calendar-results?season=${encodeURIComponent(season)}`;
-      const html = await this.fetchHtml(path);
+      const html = await this.fetchHtmlSmart(path, useProxyRender);
       const $ = this.parseHtml(html);
       const meetings = new Set();
       $('a[href*="/competitions/diamond-league/calendar-results/"]').each((_, a) => {
@@ -209,9 +254,9 @@ class WorldAthletics2025 extends BaseScraper {
     }
   }
 
-  async extractEventResultLinksFromMeeting(meetingUrl) {
+  async extractEventResultLinksFromMeeting(meetingUrl, useProxyRender = false) {
     try {
-      const html = await this.fetchHtml(meetingUrl);
+      const html = await this.fetchHtmlSmart(meetingUrl, useProxyRender);
       const $ = this.parseHtml(html);
       const links = new Set();
       // Heuristics: look for links that navigate to discipline results
@@ -414,13 +459,13 @@ class WorldAthletics2025 extends BaseScraper {
   }
 
   async scrape(options = {}) {
-    const { competitionUrl, eventUrls = [], diamondLeague = false, season = 2025, meetingLimit = 4, allowSample = false } = options;
+    const { competitionUrl, eventUrls = [], diamondLeague = false, season = 2025, meetingLimit = 4, allowSample = false, useProxyRender = true } = options;
     try {
       // If specific event URLs provided, scrape them directly
       if (Array.isArray(eventUrls) && eventUrls.length > 0) {
         let all = [];
         for (const url of eventUrls) {
-          const res = await this.getResults(url);
+          const res = await this.getResults(url, useProxyRender);
           all.push(...res);
         }
         return all;
@@ -428,13 +473,13 @@ class WorldAthletics2025 extends BaseScraper {
 
       // If instructed to crawl Diamond League season
       if (diamondLeague) {
-        const meetings = await this.fetchDiamondLeagueMeetings(season);
+        const meetings = await this.fetchDiamondLeagueMeetings(season, useProxyRender);
         const pick = meetings.slice(0, Math.max(1, meetingLimit));
         let all = [];
         for (const m of pick) {
-          const eventLinks = await this.extractEventResultLinksFromMeeting(m);
+          const eventLinks = await this.extractEventResultLinksFromMeeting(m, useProxyRender);
           for (const ev of eventLinks) {
-            const res = await this.getResults(ev);
+            const res = await this.getResults(ev, useProxyRender);
             all.push(...res);
           }
         }
@@ -443,10 +488,10 @@ class WorldAthletics2025 extends BaseScraper {
 
       // If a specific competition URL is provided, try to detect event links minimally
       if (competitionUrl) {
-        const eventLinks = await this.extractEventResultLinksFromMeeting(competitionUrl);
+        const eventLinks = await this.extractEventResultLinksFromMeeting(competitionUrl, useProxyRender);
         let all = [];
         for (const u of eventLinks) {
-          const res = await this.getResults(u);
+          const res = await this.getResults(u, useProxyRender);
           all.push(...res);
         }
         return all;

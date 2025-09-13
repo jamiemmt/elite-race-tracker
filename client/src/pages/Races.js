@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Form, Badge, Spinner, Alert, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaSearch, FaPlus } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
 import axios from 'axios';
 
 const Races = () => {
@@ -260,7 +260,14 @@ const Races = () => {
             </Form.Group>
           </Col>
           <Col md={9} className="d-flex align-items-end justify-content-end">
-            <small className="text-muted me-2">Click the Discipline header to sort {disciplineAsc ? '▲' : '▼'}</small>
+            <small className="text-muted me-2 d-flex align-items-center">
+              <span className="me-3 d-inline-flex align-items-center">
+                Date sort {dateAsc ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />}
+              </span>
+              <span className="d-inline-flex align-items-center">
+                Discipline sort {disciplineAsc ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />}
+              </span>
+            </small>
           </Col>
         </Row>
       </div>
@@ -274,10 +281,18 @@ const Races = () => {
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th style={{ width: '18%' }}>Date</th>
+                <th style={{ width: '18%', cursor: 'pointer' }} onClick={() => setDateAsc(!dateAsc)}>
+                  <div className="d-flex align-items-center">
+                    <span className="me-1">Date</span>
+                    {dateAsc ? <FaSortUp /> : <FaSortDown />}
+                  </div>
+                </th>
                 <th style={{ width: '26%' }}>Meeting</th>
                 <th style={{ width: '24%', cursor: 'pointer' }} onClick={() => setDisciplineAsc(!disciplineAsc)}>
-                  Discipline {disciplineAsc ? '▲' : '▼'}
+                  <div className="d-flex align-items-center">
+                    <span className="me-1">Discipline</span>
+                    {disciplineAsc ? <FaSortUp /> : <FaSortDown />}
+                  </div>
                 </th>
                 <th style={{ width: '10%' }}>Distance</th>
                 <th style={{ width: '8%' }}>Gender</th>

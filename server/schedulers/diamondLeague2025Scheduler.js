@@ -97,7 +97,13 @@ class DiamondLeague2025Scheduler {
       {
         name: 'Zurich Final',
         date: '2025-08-27',
-        scraper: 'diamondLeague2025Accurate', // Use the verified accurate scraper
+        scraper: 'worldathletics2025', // Use official World Athletics meeting page
+        options: {
+          competitionUrl: 'https://worldathletics.org/competitions/diamond-league/calendar-results/7199686/result',
+          useProxyRender: true,
+          topN: 100,
+          cleanup: false
+        },
         enabled: true
       }
     ];
@@ -148,10 +154,9 @@ class DiamondLeague2025Scheduler {
         console.log(`Running Diamond League ${meeting.name} 2025 scraper...`);
         
         try {
-          const result = await scraperController.runScraperProgrammatic(meeting.scraper, {
-            topN: 100, // Capture all finishers
-            cleanup: false // Don't cleanup unless specifically needed
-          });
+          const defaultOptions = { topN: 100, cleanup: false };
+          const mergedOptions = { ...defaultOptions, ...(meeting.options || {}) };
+          const result = await scraperController.runScraperProgrammatic(meeting.scraper, mergedOptions);
           
           console.log(`Diamond League ${meeting.name} 2025 scraper completed:`, result.summary);
         } catch (error) {
@@ -205,14 +210,11 @@ class DiamondLeague2025Scheduler {
 
     console.log(`Manually running Diamond League ${meeting.name} 2025 scraper...`);
     
-    const defaultOptions = {
-      topN: 100,
-      cleanup: false,
-      ...options
-    };
+    const defaultOptions = { topN: 100, cleanup: false };
+    const mergedOptions = { ...defaultOptions, ...(meeting.options || {}), ...(options || {}) };
 
     try {
-      const result = await scraperController.runScraperProgrammatic(meeting.scraper, defaultOptions);
+      const result = await scraperController.runScraperProgrammatic(meeting.scraper, mergedOptions);
       console.log(`Diamond League ${meeting.name} 2025 scraper completed:`, result.summary);
       return result;
     } catch (error) {
