@@ -19,6 +19,7 @@ const Races = () => {
   const [distances, setDistances] = useState({});
   const [groupBy, setGroupBy] = useState('meeting'); // 'meeting' | 'date'
   const [disciplineAsc, setDisciplineAsc] = useState(true);
+  const [dateAsc, setDateAsc] = useState(true);
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -138,7 +139,7 @@ const Races = () => {
     const groupEntries = Object.entries(groups).sort((a, b) => {
       const aMin = Math.min(...a[1].map(r => new Date(r.date).getTime()));
       const bMin = Math.min(...b[1].map(r => new Date(r.date).getTime()));
-      return aMin - bMin;
+      return dateAsc ? (aMin - bMin) : (bMin - aMin);
     });
 
     // Sort items within each group by discipline
@@ -154,7 +155,7 @@ const Races = () => {
     });
 
     return sortedGroups;
-  }, [filteredRaces, groupBy, disciplineAsc]);
+  }, [filteredRaces, groupBy, disciplineAsc, dateAsc]);
 
   if (loading) {
     return (
