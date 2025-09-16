@@ -102,12 +102,36 @@ class WorldAthletics2025 extends BaseScraper {
   }
 
   createRaceName(competitionName, eventName, gender) {
-    let raceName = competitionName || 'World Athletics Competition';
-    if (eventName && eventName !== competitionName) raceName += ` - ${eventName}`;
+    // Clean up competition name by removing repeated metadata
+    let cleanCompName = (competitionName || 'World Athletics Competition')
+      .replace(/Diamond Discipline - \w+/g, '')
+      .replace(/Promotional Events - \w+/g, '')
+      .replace(/National Events - \w+/g, '')
+      .replace(/U23 Events - \w+/g, '')
+      .replace(/Split times - \w+/g, '')
+      .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed Division/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Clean up event name
+    let cleanEventName = eventName ? eventName
+      .replace(/Diamond Discipline - \w+/g, '')
+      .replace(/Promotional Events - \w+/g, '')
+      .replace(/National Events - \w+/g, '')
+      .replace(/U23 Events - \w+/g, '')
+      .replace(/Split times - \w+/g, '')
+      .trim() : '';
+    
+    let raceName = cleanCompName;
+    if (cleanEventName && cleanEventName !== cleanCompName && cleanEventName.length > 0) {
+      raceName += ` - ${cleanEventName}`;
+    }
+    
     const lr = raceName.toLowerCase();
-    if (gender === 'Male' && !lr.includes("men")) raceName += " - Men's Division";
-    else if (gender === 'Female' && !lr.includes("women")) raceName += " - Women's Division";
-    else if (gender === 'Mixed' && !lr.includes('mixed')) raceName += ' - Mixed Division';
+    if (gender === 'Male' && !lr.includes("men")) raceName += " - Men's";
+    else if (gender === 'Female' && !lr.includes("women")) raceName += " - Women's";
+    else if (gender === 'Mixed' && !lr.includes('mixed') && !lr.includes("men") && !lr.includes("women")) raceName += ' - Mixed';
+    
     return raceName;
   }
 
@@ -375,13 +399,27 @@ class WorldAthletics2025 extends BaseScraper {
 
       // Try to infer event metadata from siblings in JSON string
       const jsonStr = JSON.stringify(nextData);
-      const titleMatch = jsonStr.match(/\"event\"\s*:\s*\"([^\"]+)\"/i) || jsonStr.match(/\"discipline\"\s*:\s*\"([^\"]+)\"/i);
-      const eventName = titleMatch ? titleMatch[1] : '';
+      const titleMatch = jsonStr.match(/\"event\"\s*:\s*\"([^\"]+)\"/i) || 
+                        jsonStr.match(/\"discipline\"\s*:\s*\"([^\"]+)\"/i) ||
+                        jsonStr.match(/\"name\"\s*:\s*\"([^\"]+)\"/i);
+      let eventName = titleMatch ? titleMatch[1] : '';
+      
+      // Clean extracted event name
+      eventName = eventName
+        .replace(/Diamond Discipline - \w+/g, '')
+        .replace(/Promotional Events - \w+/g, '')
+        .replace(/National Events - \w+/g, '')
+        .replace(/U23 Events - \w+/g, '')
+        .replace(/Split times - \w+/g, '')
+        .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed Division/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
       const gender = /women/i.test(eventName) ? 'Female' : (/men/i.test(eventName) ? 'Male' : (eventInfoFallback.gender || 'Mixed'));
       const distance = this.parseDistance(eventName) || eventInfoFallback.distance || 0;
       const raceInfo = {
         ...(eventInfoFallback || {}),
-        name: eventInfoFallback?.name || eventName || 'World Athletics Event',
+        name: this.createRaceName(eventInfoFallback?.name, eventName, gender),
         gender,
         distance,
         distanceUnit: this.getDistanceUnit(distance),
