@@ -5,17 +5,6 @@ const Race = require('../models/Race');
 const Athlete = require('../models/Athlete');
 
 /**
- * DELETE /api/cleanup/diamond-league
- * Clear all Diamond League results, races, and orphaned athletes
- */
-router.delete('/diamond-league', async (req, res) => {
-  try {
-    // Find all Diamond League races
-    const diamondLeagueRaces = await Race.find({
-      name: { $regex: /diamond league/i }
-    });
-
-/**
  * DELETE /api/cleanup/by-name
  * Remove races and their results by matching race name (contains or regex), with optional filters.
  * Query params:
@@ -98,7 +87,18 @@ router.delete('/by-name', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-    
+
+/**
+ * DELETE /api/cleanup/diamond-league
+ * Clear all Diamond League results, races, and orphaned athletes
+ */
+router.delete('/diamond-league', async (req, res) => {
+  try {
+    // Find all Diamond League races
+    const diamondLeagueRaces = await Race.find({
+      name: { $regex: /diamond league/i }
+    });
+
     console.log(`Found ${diamondLeagueRaces.length} Diamond League races`);
     
     // Get race IDs
