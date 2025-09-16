@@ -96,7 +96,9 @@ exports.runScraperProgrammatic = async (source, options = {}) => {
  * @returns {Promise<Object>} - Summary of the processing
  */
 async function processResults(results, source, options = {}) {
-  const topN = parseInt(options.topN || process.env.SCRAPER_TOP_N || '20', 10);
+  const optTopN = options?.topN;
+  const noLimit = (options?.noLimit === true) || (typeof optTopN === 'string' && optTopN.toLowerCase() === 'all') || (typeof optTopN === 'number' && optTopN <= 0);
+  const topN = noLimit ? null : parseInt(optTopN || process.env.SCRAPER_TOP_N || '20', 10);
   const summary = {
     totalResults: results.length,
     processedResults: 0,
@@ -104,7 +106,7 @@ async function processResults(results, source, options = {}) {
     newRaces: 0,
     newResults: 0,
     updatedBanStatus: 0,
-    limitedPerEvent: topN,
+    limitedPerEvent: noLimit ? null : topN,
     errors: []
   };
 
@@ -113,32 +115,34 @@ async function processResults(results, source, options = {}) {
     return await processBannedAthletes(results, summary);
   }
 
-  // Limit results to topN per event (race) before processing
+  // Limit results to topN per event (race) before processing (unless noLimit)
   try {
-    const buckets = new Map();
-    const keyOf = (r) => {
-      const race = r.race || {};
-      const dateStr = race.date ? new Date(race.date).toISOString().slice(0,10) : '';
-      return [race.name || 'Unknown', dateStr, race.distance || 0, race.distanceUnit || 'm', race.gender || 'Mixed'].join('|');
-    };
-    for (const r of results) {
-      const k = keyOf(r);
-      if (!buckets.has(k)) buckets.set(k, []);
-      buckets.get(k).push(r);
+    if (!noLimit) {
+      const buckets = new Map();
+      const keyOf = (r) => {
+        const race = r.race || {};
+        const dateStr = race.date ? new Date(race.date).toISOString().slice(0,10) : '';
+        return [race.name || 'Unknown', dateStr, race.distance || 0, race.distanceUnit || 'm', race.gender || 'Mixed'].join('|');
+      };
+      for (const r of results) {
+        const k = keyOf(r);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(r);
+      }
+      const limited = [];
+      for (const [_k, arr] of buckets) {
+        arr.sort((a, b) => {
+          const pa = (a.result?.position ?? a.position ?? Infinity);
+          const pb = (b.result?.position ?? b.position ?? Infinity);
+          if (isFinite(pa) && isFinite(pb)) return pa - pb;
+          const ta = (a.result?.time ?? a.finishTime ?? Infinity);
+          const tb = (b.result?.time ?? b.finishTime ?? Infinity);
+          return ta - tb;
+        });
+        limited.push(...arr.slice(0, Math.max(1, topN)));
+      }
+      results = limited;
     }
-    const limited = [];
-    for (const [_k, arr] of buckets) {
-      arr.sort((a, b) => {
-        const pa = (a.result?.position ?? a.position ?? Infinity);
-        const pb = (b.result?.position ?? b.position ?? Infinity);
-        if (isFinite(pa) && isFinite(pb)) return pa - pb;
-        const ta = (a.result?.time ?? a.finishTime ?? Infinity);
-        const tb = (b.result?.time ?? b.finishTime ?? Infinity);
-        return ta - tb;
-      });
-      limited.push(...arr.slice(0, Math.max(1, topN)));
-    }
-    results = limited;
   } catch (e) {
     console.warn('topN pre-processing failed, proceeding without limiting:', e.message);
   }

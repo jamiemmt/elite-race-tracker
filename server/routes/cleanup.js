@@ -14,6 +14,90 @@ router.delete('/diamond-league', async (req, res) => {
     const diamondLeagueRaces = await Race.find({
       name: { $regex: /diamond league/i }
     });
+
+/**
+ * DELETE /api/cleanup/by-name
+ * Remove races and their results by matching race name (contains or regex), with optional filters.
+ * Query params:
+ *  - contains: string (case-insensitive substring match)
+ *  - regex: string (custom regex, case-insensitive)
+ *  - category: string (e.g., 'Track')
+ *  - yearFrom, yearTo: numbers (inclusive year range)
+ *  - dryRun: 'true' to preview without deleting
+ */
+router.delete('/by-name', async (req, res) => {
+  try {
+    const { contains, regex, category, yearFrom, yearTo, dryRun } = req.query;
+    if (!contains && !regex) {
+      return res.status(400).json({ success: false, error: 'Must provide contains or regex parameter' });
+    }
+    let nameFilter;
+    if (regex) {
+      try {
+        nameFilter = { $regex: new RegExp(regex, 'i') };
+      } catch (e) {
+        return res.status(400).json({ success: false, error: `Invalid regex: ${e.message}` });
+      }
+    } else {
+      nameFilter = { $regex: new RegExp(contains, 'i') };
+    }
+    const q = { name: nameFilter };
+    if (category) q.category = category;
+    // Year range filter (inclusive)
+    const yFrom = yearFrom ? parseInt(yearFrom, 10) : null;
+    const yTo = yearTo ? parseInt(yearTo, 10) : null;
+    if ((yFrom && isNaN(yFrom)) || (yTo && isNaN(yTo))) {
+      return res.status(400).json({ success: false, error: 'Invalid yearFrom/yearTo' });
+    }
+    if (yFrom || yTo) {
+      const start = yFrom ? new Date(`${yFrom}-01-01T00:00:00.000Z`) : new Date('1900-01-01T00:00:00.000Z');
+      const end = yTo ? new Date(`${yTo}-12-31T23:59:59.999Z`) : new Date('2100-12-31T23:59:59.999Z');
+      q.date = { $gte: start, $lte: end };
+    }
+
+    const races = await Race.find(q);
+    const raceIds = races.map(r => r._id);
+    const resultsToDeleteCount = await Result.countDocuments({ race: { $in: raceIds } });
+
+    if (dryRun === 'true') {
+      return res.json({
+        success: true,
+        dryRun: true,
+        filter: { contains, regex, category, yearFrom: yFrom, yearTo: yTo },
+        summary: {
+          matchedRaces: races.length,
+          matchedResults: resultsToDeleteCount,
+          sampleRaceNames: races.slice(0, 10).map(r => r.name),
+        }
+      });
+    }
+
+    const deletedResults = await Result.deleteMany({ race: { $in: raceIds } });
+    const deletedRaces = await Race.deleteMany({ _id: { $in: raceIds } });
+
+    // Clean orphaned non-banned athletes
+    const athletesWithResults = await Result.distinct('athlete');
+    const orphanedNonBanned = await Athlete.find({ _id: { $nin: athletesWithResults }, isBanned: { $ne: true } });
+    let deletedAthletes = 0;
+    if (orphanedNonBanned.length > 0) {
+      const del = await Athlete.deleteMany({ _id: { $in: orphanedNonBanned.map(a => a._id) } });
+      deletedAthletes = del.deletedCount || 0;
+    }
+
+    res.json({
+      success: true,
+      filter: { contains, regex, category, yearFrom: yFrom, yearTo: yTo },
+      summary: {
+        deletedResults: deletedResults.deletedCount || 0,
+        deletedRaces: deletedRaces.deletedCount || 0,
+        deletedAthletes,
+      }
+    });
+  } catch (error) {
+    console.error('Error in by-name cleanup:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
     
     console.log(`Found ${diamondLeagueRaces.length} Diamond League races`);
     
