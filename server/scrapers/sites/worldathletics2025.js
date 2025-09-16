@@ -102,24 +102,32 @@ class WorldAthletics2025 extends BaseScraper {
   }
 
   createRaceName(competitionName, eventName, gender) {
-    // Clean up competition name by removing repeated metadata
+    // Clean up competition name by removing all metadata patterns
     let cleanCompName = (competitionName || 'World Athletics Competition')
-      .replace(/Diamond Discipline - \w+/g, '')
-      .replace(/Promotional Events - \w+/g, '')
-      .replace(/National Events - \w+/g, '')
-      .replace(/U23 Events - \w+/g, '')
-      .replace(/Split times - \w+/g, '')
-      .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed Division/g, '')
+      .replace(/(Diamond\s+)?Discipline\s*-\s*\w+/gi, '')
+      .replace(/Promotional\s+Events\s*-\s*\w+/gi, '')
+      .replace(/National\s+Events\s*-\s*\w+/gi, '')
+      .replace(/U23\s+Events\s*-\s*\w+/gi, '')
+      .replace(/Split\s+times\s*-\s*\w+/gi, '')
+      .replace(/Events\s*-\s*\w+/gi, '')
+      .replace(/times\s*-\s*\w+/gi, '')
+      .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed(\s+Division)?/gi, '')
+      .replace(/\s*-\s*Mixed(\s+Division)?/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Clean up event name
+    // Clean up event name similarly
     let cleanEventName = eventName ? eventName
-      .replace(/Diamond Discipline - \w+/g, '')
-      .replace(/Promotional Events - \w+/g, '')
-      .replace(/National Events - \w+/g, '')
-      .replace(/U23 Events - \w+/g, '')
-      .replace(/Split times - \w+/g, '')
+      .replace(/(Diamond\s+)?Discipline\s*-\s*\w+/gi, '')
+      .replace(/Promotional\s+Events\s*-\s*\w+/gi, '')
+      .replace(/National\s+Events\s*-\s*\w+/gi, '')
+      .replace(/U23\s+Events\s*-\s*\w+/gi, '')
+      .replace(/Split\s+times\s*-\s*\w+/gi, '')
+      .replace(/Events\s*-\s*\w+/gi, '')
+      .replace(/times\s*-\s*\w+/gi, '')
+      .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed(\s+Division)?/gi, '')
+      .replace(/\s*-\s*Mixed(\s+Division)?/gi, '')
+      .replace(/\s+/g, ' ')
       .trim() : '';
     
     let raceName = cleanCompName;
@@ -404,14 +412,17 @@ class WorldAthletics2025 extends BaseScraper {
                         jsonStr.match(/\"name\"\s*:\s*\"([^\"]+)\"/i);
       let eventName = titleMatch ? titleMatch[1] : '';
       
-      // Clean extracted event name
+      // Clean extracted event name with comprehensive patterns
       eventName = eventName
-        .replace(/Diamond Discipline - \w+/g, '')
-        .replace(/Promotional Events - \w+/g, '')
-        .replace(/National Events - \w+/g, '')
-        .replace(/U23 Events - \w+/g, '')
-        .replace(/Split times - \w+/g, '')
-        .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed Division/g, '')
+        .replace(/(Diamond\s+)?Discipline\s*-\s*\w+/gi, '')
+        .replace(/Promotional\s+Events\s*-\s*\w+/gi, '')
+        .replace(/National\s+Events\s*-\s*\w+/gi, '')
+        .replace(/U23\s+Events\s*-\s*\w+/gi, '')
+        .replace(/Split\s+times\s*-\s*\w+/gi, '')
+        .replace(/Events\s*-\s*\w+/gi, '')
+        .replace(/times\s*-\s*\w+/gi, '')
+        .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed(\s+Division)?/gi, '')
+        .replace(/\s*-\s*Mixed(\s+Division)?/gi, '')
         .replace(/\s+/g, ' ')
         .trim();
       
