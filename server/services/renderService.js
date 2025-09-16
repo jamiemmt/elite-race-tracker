@@ -89,6 +89,57 @@ class RenderService {
       try { await context.close(); } catch (_) {}
     }
   }
+
+  /**
+   * Capture JSON responses while rendering a page (XHR/fetch) and return matched payloads.
+   * @param {string} url
+   * @param {{timeoutMs?: number, urlPatterns?: (string|RegExp)[], maxItems?: number}} options
+   * @returns {Promise<Array<{url: string, data: any}>>}
+   */
+  async renderCaptureJson(url, options = {}) {
+    const { timeoutMs = 35000, urlPatterns = [], maxItems = 20 } = options;
+    const browser = await this.getBrowser();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const captured = [];
+    const matchUrl = (u) => {
+      if (!urlPatterns || urlPatterns.length === 0) return /api|json|result|results|discipline|competition|events/i.test(u);
+      for (const p of urlPatterns) {
+        if (typeof p === 'string') { if (u.includes(p)) return true; }
+        else if (p instanceof RegExp) { if (p.test(u)) return true; }
+      }
+      return false;
+    };
+    try {
+      page.on('response', async (response) => {
+        try {
+          if (captured.length >= maxItems) return;
+          const reqType = response.request().resourceType();
+          if (reqType !== 'xhr' && reqType !== 'fetch') return;
+          const u = response.url();
+          if (!matchUrl(u)) return;
+          // Try JSON first; if fails, try text and parse if it looks like JSON
+          let data = await response.json().catch(async () => {
+            const txt = await response.text();
+            const s = (txt || '').trim();
+            if (s.startsWith('{') || s.startsWith('[')) {
+              try { return JSON.parse(s); } catch (_) { return null; }
+            }
+            return null;
+          });
+          if (data) captured.push({ url: u, data });
+        } catch (_) {}
+      });
+
+      await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
+      // brief extra wait to allow late XHRs
+      await page.waitForTimeout(1500);
+      return captured;
+    } finally {
+      try { await page.close(); } catch (_) {}
+      try { await context.close(); } catch (_) {}
+    }
+  }
 }
 
 module.exports = new RenderService();

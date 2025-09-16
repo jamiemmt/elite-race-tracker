@@ -216,6 +216,22 @@ class WorldAthletics2025 extends BaseScraper {
         }
       }
 
+      // Deep fallback: capture JSON XHR/fetch payloads and mine results
+      if (results.length === 0 && useProxyRender) {
+        try {
+          const absolute = this.absoluteUrl(eventUrl);
+          const payloads = await renderService.renderCaptureJson(absolute, {
+            timeoutMs: 35000,
+            urlPatterns: [/results?/i, /api/i, /json/i, /discipline/i, /event/i, /competition/i],
+            maxItems: 40,
+          });
+          const mined = this.extractResultsFromCaptured(payloads, eventInfo);
+          if (mined && mined.length) results = mined;
+        } catch (e) {
+          console.warn('JSON capture fallback failed:', e.message);
+        }
+      }
+
       return results;
     } catch (e) {
       console.error('getResults error:', e.message);
@@ -253,6 +269,7 @@ class WorldAthletics2025 extends BaseScraper {
           meetings.add(this.absoluteUrl(m[1]));
         }
       }
+      try { console.log(`[WA] Meetings detected for season ${season}: ${meetings.size}`); } catch (_) {}
       return Array.from(meetings);
     } catch (e) {
       console.error('fetchDiamondLeagueMeetings error:', e.message);
@@ -265,15 +282,18 @@ class WorldAthletics2025 extends BaseScraper {
       const html = await this.fetchHtmlSmart(meetingUrl, useProxyRender);
       const $ = this.parseHtml(html);
       const links = new Set();
+      const isResulty = (u, t) => {
+        const s = `${u} ${t}`;
+        return /(results?|final|heats|semi|qualification)/i.test(s);
+      };
+      const looksDisciplinePath = (u) => /calendar-results\/\d+\/(result|results|discipline|event)\//i.test(u) || /\/competitions\/[^\s]*\/(result|results|discipline|event)\b/i.test(u);
       // Heuristics: look for links that navigate to discipline results
       $('a').each((_, a) => {
         const href = $(a).attr('href') || '';
-        const text = ($(a).text() || '').toLowerCase();
-        const looksLikeResultPath = /\/(result|results)\b/i.test(href) || /calendar-results\/\d+\/result/i.test(href);
-        if (/results|final|heats|semi|qualification/.test(text) || looksLikeResultPath) {
-          if (/metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(href + ' ' + text)) {
-            links.add(this.absoluteUrl(href));
-          }
+        const text = ($(a).text() || '');
+        const looksLike = looksDisciplinePath(href) || isResulty(href, text);
+        if (looksLike && /metres|meter|m\b|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(`${href} ${text}`)) {
+          links.add(this.absoluteUrl(href));
         }
       });
       // Also pull candidate links from Next.js JSON
@@ -285,8 +305,8 @@ class WorldAthletics2025 extends BaseScraper {
         const collect = (obj) => {
           if (!obj) return;
           if (typeof obj === 'string') {
-            const looksLikeResultPath = /\/(result|results)\b/i.test(obj) || /calendar-results\/\d+\/result/i.test(obj);
-            if (looksLikeResultPath && /metres|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(obj)) {
+            const looksLikeResultPath = looksDisciplinePath(obj) || /\/(result|results)\b/i.test(obj) || /calendar-results\/\d+\/result/i.test(obj);
+            if (looksLikeResultPath && /metres|meter|m\b|100|200|400|800|1500|3000|5000|10000|hurdles|steeple/i.test(obj)) {
               links.add(this.absoluteUrl(obj));
             }
             return;
@@ -296,11 +316,18 @@ class WorldAthletics2025 extends BaseScraper {
             return;
           }
           if (typeof obj === 'object') {
-            for (const k of Object.keys(obj)) collect(obj[k]);
+              if (obj.href || obj.url) {
+                const u = obj.href || obj.url;
+                if (typeof u === 'string' && (looksDisciplinePath(u) || isResulty(u, ''))) {
+                  links.add(this.absoluteUrl(u));
+                }
+              }
+              for (const k of Object.keys(obj)) collect(obj[k]);
           }
         };
         collect(nextData);
       }
+      try { console.log(`[WA] Event links from ${meetingUrl}: ${links.size}`); } catch (_) {}
       return Array.from(links);
     } catch (e) {
       console.error('extractEventResultLinksFromMeeting error:', e.message);
@@ -341,13 +368,10 @@ class WorldAthletics2025 extends BaseScraper {
           for (const k of Object.keys(node)) stack.push(node[k]);
         }
       }
-
-      // Use the largest plausible candidate
-      let best = null;
-      for (const arr of candidates) {
-        if (!best || arr.length > best.length) best = arr;
-      }
-      if (!best) return [];
+      try {
+        console.log(`[WA] Next.js candidate arrays found: ${candidates.length} sizes=[${candidates.map(a => a.length).slice(0, 10).join(',')}]`);
+      } catch (_) {}
+      if (!candidates.length) return [];
 
       // Try to infer event metadata from siblings in JSON string
       const jsonStr = JSON.stringify(nextData);
@@ -363,19 +387,25 @@ class WorldAthletics2025 extends BaseScraper {
         distanceUnit: this.getDistanceUnit(distance),
         category: 'Track',
       };
-
-      let pos = 1;
-      for (const row of best) {
-        const mapped = this.mapResultRow(row, pos, raceInfo.gender);
-        if (mapped) {
-          results.push({
-            position: mapped.position,
-            athlete: { name: mapped.name, country: mapped.country, gender: raceInfo.gender },
-            race: { ...raceInfo },
-            formattedTime: mapped.formattedTime,
-            finishTime: this.convertTimeToSeconds(mapped.formattedTime),
-          });
-          pos++;
+      const seen = new Set();
+      for (const arr of candidates) {
+        let pos = 1;
+        for (const row of arr) {
+          const mapped = this.mapResultRow(row, pos, raceInfo.gender);
+          if (mapped) {
+            const key = `${mapped.name}|${mapped.formattedTime}`;
+            if (!seen.has(key)) {
+              results.push({
+                position: mapped.position,
+                athlete: { name: mapped.name, country: mapped.country, gender: raceInfo.gender },
+                race: { ...raceInfo },
+                formattedTime: mapped.formattedTime,
+                finishTime: this.convertTimeToSeconds(mapped.formattedTime),
+              });
+              seen.add(key);
+            }
+            pos++;
+          }
         }
       }
     } catch (e) {
@@ -384,13 +414,25 @@ class WorldAthletics2025 extends BaseScraper {
     return results;
   }
 
+  extractResultsFromCaptured(payloads, eventInfoFallback) {
+    const all = [];
+    try {
+      if (!Array.isArray(payloads)) return all;
+      for (const p of payloads) {
+        const res = this.extractResultsFromNextData(p?.data, eventInfoFallback);
+        if (res && res.length) all.push(...res);
+      }
+    } catch (_) {}
+    return all;
+  }
+
   looksLikeResultArray(arr) {
     try {
       const a = arr[0];
       if (!a) return false;
       const s = JSON.stringify(a).toLowerCase();
       // look for keys typically present in WA results JSON
-      return /place|rank|position/.test(s) && /(mark|time|result)/.test(s) && /(athlete|competitor|name|surname)/.test(s);
+      return /place|rank|position|rk/.test(s) && /(mark|time|result|performance|best)/.test(s) && /(athlete|competitor|fullName|displayName|surname|givenName|familyName|name)/.test(s);
     } catch (_) { return false; }
   }
 
@@ -398,21 +440,28 @@ class WorldAthletics2025 extends BaseScraper {
     try {
       // Try multiple shapes
       const obj = row || {};
-      let position = obj.place || obj.rank || obj.position || defaultPosition;
-      let formattedTime = obj.mark || obj.time || obj.result || obj.performance || '';
+      let position = obj.place || obj.rank || obj.position || obj.rk || defaultPosition;
+      let formattedTime = obj.mark || obj.time || obj.result || obj.performance || obj.best || obj.resultMark || '';
       let name = '';
-      let country = obj.country || obj.nationality || (obj.competitor && (obj.competitor.country || obj.competitor.nationality)) || 'UNK';
+      let country = obj.country || obj.nationality || obj.countryCode || obj.countryCode3 || obj.noc ||
+        (obj.team && (obj.team.countryCode || obj.team.code)) ||
+        (obj.athlete && (obj.athlete.countryCode || obj.athlete.nationality)) ||
+        (obj.competitor && (obj.competitor.countryCode || obj.competitor.nationality || obj.competitor.country)) || 'UNK';
 
       if (obj.athlete) {
         if (typeof obj.athlete === 'string') name = obj.athlete;
         else if (obj.athlete.fullName) name = obj.athlete.fullName;
         else if (obj.athlete.name) name = obj.athlete.name;
+        else if (obj.athlete.displayName) name = obj.athlete.displayName;
+        else if (obj.athlete.familyName || obj.athlete.givenName) name = `${obj.athlete.givenName || ''} ${obj.athlete.familyName || ''}`.trim();
         else if (obj.athlete.surname || obj.athlete.givenName) name = `${obj.athlete.givenName || ''} ${obj.athlete.surname || ''}`.trim();
       }
       if (!name && obj.competitor) {
         if (typeof obj.competitor === 'string') name = obj.competitor;
         else if (obj.competitor.fullName) name = obj.competitor.fullName;
         else if (obj.competitor.name) name = obj.competitor.name;
+        else if (obj.competitor.displayName) name = obj.competitor.displayName;
+        else if (obj.competitor.familyName || obj.competitor.givenName) name = `${obj.competitor.givenName || ''} ${obj.competitor.familyName || ''}`.trim();
         else if (obj.competitor.surname || obj.competitor.givenName) name = `${obj.competitor.givenName || ''} ${obj.competitor.surname || ''}`.trim();
       }
       if (!name && obj.name) name = obj.name;
@@ -505,6 +554,32 @@ class WorldAthletics2025 extends BaseScraper {
           const res = await this.getResults(u, useProxyRender);
           all.push(...res);
         }
+        if (all.length > 0) return all;
+        // Fallback: parse meeting page Next.js JSON directly
+        try {
+          const html = await this.fetchHtmlSmart(competitionUrl, useProxyRender);
+          const $ = this.parseHtml(html);
+          const meetingInfo = this.parseEventInfo($);
+          let nextData = this.extractNextData(html);
+          if (!nextData && useProxyRender) {
+            nextData = await this.fetchNextDataSmart(competitionUrl, useProxyRender);
+          }
+          if (nextData) {
+            const res = this.extractResultsFromNextData(nextData, meetingInfo);
+            if (res && res.length) return res;
+          }
+          // Deep fallback: capture JSON
+          if (useProxyRender) {
+            const absolute = this.absoluteUrl(competitionUrl);
+            const payloads = await renderService.renderCaptureJson(absolute, {
+              timeoutMs: 35000,
+              urlPatterns: [/results?/i, /api/i, /json/i, /discipline/i, /event/i, /competition/i],
+              maxItems: 60,
+            });
+            const mined = this.extractResultsFromCaptured(payloads, meetingInfo);
+            if (mined && mined.length) return mined;
+          }
+        } catch (_) {}
         return all;
       }
 
