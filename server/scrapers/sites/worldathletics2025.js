@@ -157,7 +157,31 @@ class WorldAthletics2025 extends BaseScraper {
     const dateSelectors = ['.event-header__date','.date','.competition-date','.event-date','time'];
     let dateText = '';
     for (const sel of dateSelectors) { const t = $(sel).text().trim(); if (t) { dateText = t; break; } }
+    
+    // Set default dates for known Diamond League meetings
     let date = new Date();
+    const meetingDates = {
+      'doha': new Date('2025-05-16'),
+      'rome': new Date('2025-06-06'), 
+      'roma': new Date('2025-06-06'),
+      'oslo': new Date('2025-06-11'),
+      'eugene': new Date('2025-07-05'),
+      'prefontaine': new Date('2025-07-05'),
+      'london': new Date('2025-07-19'),
+      'monaco': new Date('2025-07-11'),
+      'zurich': new Date('2025-08-28')
+    };
+    
+    // Try to match meeting name to known dates
+    const nameLower = name.toLowerCase();
+    for (const [key, meetingDate] of Object.entries(meetingDates)) {
+      if (nameLower.includes(key)) {
+        date = meetingDate;
+        break;
+      }
+    }
+    
+    // If we have explicit date text, try to parse it
     try {
       if (dateText) {
         const tryDate = new Date(dateText);
@@ -387,62 +411,54 @@ class WorldAthletics2025 extends BaseScraper {
   extractResultsFromNextData(nextData, eventInfoFallback) {
     const results = [];
     try {
-      // Flatten search: collect arrays that look like result rows
-      const candidates = [];
-      const stack = [nextData];
+      // Flatten search: collect arrays that look like result rows with event context
+      const eventGroups = [];
+      const stack = [{ node: nextData, path: [] }];
+      
       while (stack.length) {
-        const node = stack.pop();
+        const { node, path } = stack.pop();
         if (!node) continue;
+        
         if (Array.isArray(node)) {
-          if (node.length > 0 && this.looksLikeResultArray(node)) candidates.push(node);
-          for (const item of node) stack.push(item);
+          if (node.length > 0 && this.looksLikeResultArray(node)) {
+            // Try to find event info in the path or nearby context
+            const contextStr = JSON.stringify({ path, node: node.slice(0, 3) });
+            const eventInfo = this.extractEventInfoFromContext(contextStr, node);
+            eventGroups.push({ results: node, eventInfo });
+          }
+          for (let i = 0; i < node.length; i++) {
+            stack.push({ node: node[i], path: [...path, i] });
+          }
         } else if (typeof node === 'object') {
-          for (const k of Object.keys(node)) stack.push(node[k]);
+          for (const k of Object.keys(node)) {
+            stack.push({ node: node[k], path: [...path, k] });
+          }
         }
       }
-      try {
-        console.log(`[WA] Next.js candidate arrays found: ${candidates.length} sizes=[${candidates.map(a => a.length).slice(0, 10).join(',')}]`);
-      } catch (_) {}
-      if (!candidates.length) return [];
-
-      // Try to infer event metadata from siblings in JSON string
-      const jsonStr = JSON.stringify(nextData);
-      const titleMatch = jsonStr.match(/\"event\"\s*:\s*\"([^\"]+)\"/i) || 
-                        jsonStr.match(/\"discipline\"\s*:\s*\"([^\"]+)\"/i) ||
-                        jsonStr.match(/\"name\"\s*:\s*\"([^\"]+)\"/i);
-      let eventName = titleMatch ? titleMatch[1] : '';
       
-      // Clean extracted event name with comprehensive patterns
-      eventName = eventName
-        .replace(/(Diamond\s+)?Discipline\s*-\s*\w+/gi, '')
-        .replace(/Promotional\s+Events\s*-\s*\w+/gi, '')
-        .replace(/National\s+Events\s*-\s*\w+/gi, '')
-        .replace(/U23\s+Events\s*-\s*\w+/gi, '')
-        .replace(/Split\s+times\s*-\s*\w+/gi, '')
-        .replace(/Events\s*-\s*\w+/gi, '')
-        .replace(/times\s*-\s*\w+/gi, '')
-        .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed(\s+Division)?/gi, '')
-        .replace(/\s*-\s*Mixed(\s+Division)?/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      console.log(`[WA] Found ${eventGroups.length} event groups with results`);
       
-      const gender = /women/i.test(eventName) ? 'Female' : (/men/i.test(eventName) ? 'Male' : (eventInfoFallback.gender || 'Mixed'));
-      const distance = this.parseDistance(eventName) || eventInfoFallback.distance || 0;
-      const raceInfo = {
-        ...(eventInfoFallback || {}),
-        name: this.createRaceName(eventInfoFallback?.name, eventName, gender),
-        gender,
-        distance,
-        distanceUnit: this.getDistanceUnit(distance),
-        category: 'Track',
-      };
-      const seen = new Set();
-      for (const arr of candidates) {
+      // Process each event group separately
+      for (const group of eventGroups) {
+        const { results: resultArray, eventInfo } = group;
+        
+        // Create race info for this specific event
+        const raceInfo = {
+          ...(eventInfoFallback || {}),
+          name: this.createRaceName(eventInfoFallback?.name, eventInfo.eventName, eventInfo.gender),
+          gender: eventInfo.gender,
+          distance: eventInfo.distance,
+          distanceUnit: this.getDistanceUnit(eventInfo.distance),
+          category: 'Track',
+          date: eventInfoFallback?.date || new Date(), // Use meeting date, not current time
+        };
+        
+        const seen = new Set();
         let pos = 1;
-        for (const row of arr) {
+        for (const row of resultArray) {
           const mapped = this.mapResultRow(row, pos, raceInfo.gender);
           if (mapped) {
-            const key = `${mapped.name}|${mapped.formattedTime}`;
+            const key = `${mapped.name}|${mapped.formattedTime}|${eventInfo.eventName}`;
             if (!seen.has(key)) {
               results.push({
                 position: mapped.position,
@@ -461,6 +477,48 @@ class WorldAthletics2025 extends BaseScraper {
       console.warn('extractResultsFromNextData failed:', e.message);
     }
     return results;
+  }
+
+  extractEventInfoFromContext(contextStr, resultArray) {
+    // Try to extract event name from context or first result
+    let eventName = '';
+    let gender = 'Mixed';
+    let distance = 0;
+    
+    // Look for discipline/event info in context
+    const disciplineMatch = contextStr.match(/discipline[\"']?\s*:\s*[\"']([^\"']+)[\"']/i);
+    const eventMatch = contextStr.match(/event[\"']?\s*:\s*[\"']([^\"']+)[\"']/i);
+    const nameMatch = contextStr.match(/name[\"']?\s*:\s*[\"']([^\"']+)[\"']/i);
+    
+    eventName = disciplineMatch?.[1] || eventMatch?.[1] || nameMatch?.[1] || '';
+    
+    // If no event name from context, try to infer from result data
+    if (!eventName && resultArray.length > 0) {
+      const firstResult = resultArray[0];
+      if (firstResult && typeof firstResult === 'object') {
+        eventName = firstResult.discipline || firstResult.event || firstResult.eventName || '';
+      }
+    }
+    
+    // Clean event name
+    eventName = eventName
+      .replace(/(Diamond\s+)?Discipline\s*-\s*\w+/gi, '')
+      .replace(/Promotional\s+Events\s*-\s*\w+/gi, '')
+      .replace(/National\s+Events\s*-\s*\w+/gi, '')
+      .replace(/U23\s+Events\s*-\s*\w+/gi, '')
+      .replace(/Split\s+times\s*-\s*\w+/gi, '')
+      .replace(/Events\s*-\s*\w+/gi, '')
+      .replace(/times\s*-\s*\w+/gi, '')
+      .replace(/\s*-\s*[^-]*\([A-Z]{3}\)\s*-\s*Mixed(\s+Division)?/gi, '')
+      .replace(/\s*-\s*Mixed(\s+Division)?/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Determine gender and distance
+    gender = /women/i.test(eventName) ? 'Female' : (/men/i.test(eventName) ? 'Male' : 'Mixed');
+    distance = this.parseDistance(eventName) || 0;
+    
+    return { eventName: eventName || 'Unknown Event', gender, distance };
   }
 
   extractResultsFromCaptured(payloads, eventInfoFallback) {
