@@ -19,6 +19,7 @@ import AddAthlete from './pages/AddAthlete';
 import AddRace from './pages/AddRace';
 import AddResult from './pages/AddResult';
 import ScraperManager from './pages/ScraperManager';
+import GarminWorkout from './pages/GarminWorkout';
 import NotFound from './pages/NotFound';
 
 // Race Results Components
@@ -44,6 +45,7 @@ function App() {
             <Route path="/fastest-times" element={<FastestTimes />} />
             <Route path="/banned-athletes" element={<BannedAthletes />} />
             <Route path="/scrapers" element={<ScraperManager />} />
+            <Route path="/garmin-workout" element={<GarminWorkout />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

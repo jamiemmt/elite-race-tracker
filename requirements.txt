@@ -4,3 +4,5 @@ lxml>=4.9.0
 python-slugify>=8.0.0
 tenacity>=8.2.0
 requests>=2.31.0
+garminconnect>=0.2.19
+garth>=0.4.40

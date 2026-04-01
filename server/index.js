@@ -40,6 +40,7 @@ app.use('/api/complete-reset', require('./routes/completeReset'));
 app.use('/api/nuke-database-and-reload', require('./routes/nukeDatabaseAndReload'));
 app.use('/api/cleanup-artifacts', require('./routes/cleanupArtifacts'));
 app.use('/api/force-cleanup', require('./routes/forceCleanup'));
+app.use('/api/garmin', require('./routes/garmin'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {

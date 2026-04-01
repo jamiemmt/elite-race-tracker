@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
 import { Link, NavLink } from 'react-router-dom';
-import { FaRunning, FaStopwatch, FaUsers, FaTrophy, FaPlus, FaSpider, FaBan } from 'react-icons/fa';
+import { FaRunning, FaStopwatch, FaUsers, FaTrophy, FaPlus, FaSpider, FaBan, FaDumbbell } from 'react-icons/fa';
 
 const Header = () => {
   return (
@@ -33,6 +33,9 @@ const Header = () => {
             </Nav.Link>
             <Nav.Link as={NavLink} to="/scrapers">
               <FaSpider className="me-1" /> Scraper Manager
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/garmin-workout">
+              <FaDumbbell className="me-1" /> Workout Creator
             </Nav.Link>
           </Nav>
           <Nav>
