@@ -166,30 +166,23 @@ router.post('/parse', async (req, res) => {
     return res.status(400).json({ error: 'Workout description is required' });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured on the server' });
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' });
   }
 
   try {
     const response = await axios.post(
-      'https://api.anthropic.com/v1/messages',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: description.trim() }],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: description.trim() }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
       },
-      {
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-      }
+      { headers: { 'content-type': 'application/json' } }
     );
 
-    const rawText = response.data.content[0].text.trim();
+    const rawText = response.data.candidates[0].content.parts[0].text.trim();
 
     let parsedWorkout;
     try {
@@ -203,7 +196,7 @@ router.post('/parse', async (req, res) => {
     const garminWorkout = toGarminWorkout(parsedWorkout);
     return res.json({ parsedWorkout, garminWorkout });
   } catch (err) {
-    const msg = err.response?.data?.error?.message || err.message;
+    const msg = err.response?.data?.error?.message || err.response?.data?.error || err.message;
     console.error('Garmin parse error:', msg);
     return res.status(500).json({ error: `Failed to parse workout: ${msg}` });
   }
