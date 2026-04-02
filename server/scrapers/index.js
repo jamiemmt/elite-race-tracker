@@ -12,7 +12,7 @@ const sitesDir = path.join(__dirname, 'sites');
 
 // Dynamically load all scrapers from the sites directory
 fs.readdirSync(sitesDir).forEach(file => {
-  if (file.endsWith('.js')) {
+  if (file.endsWith('.js') && !file.startsWith('._')) {
     const scraperName = file.replace('.js', '');
     scrapers[scraperName] = require(path.join(sitesDir, file));
   }
