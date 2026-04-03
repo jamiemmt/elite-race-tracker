@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Container,
-  Row,
-  Col,
   Form,
   Button,
   Alert,
@@ -18,7 +16,7 @@ import {
   FaUpload,
   FaSearch,
   FaCheckCircle,
-  FaWatch,
+  FaStopwatch,
   FaRedo,
 } from 'react-icons/fa';
 
@@ -292,7 +290,7 @@ export default function GarminWorkout() {
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div>
             <h4 className="mb-0 fw-bold">
-              <FaWatch className="me-2 text-primary" />
+              <FaStopwatch className="me-2 text-primary" />
               Workout Creator
             </h4>
             <p className="text-muted small mb-0">
