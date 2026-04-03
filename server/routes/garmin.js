@@ -220,7 +220,14 @@ router.post('/upload', (req, res) => {
   const scriptPath = path.join(__dirname, '../garmin/upload_workout.py');
   const workoutJson = JSON.stringify(garminWorkout);
 
-  const child = execFile('python3', [scriptPath], { env: process.env }, (err, stdout, stderr) => {
+  // Prefer venv python (macOS system python can't install packages freely),
+  // fall back to system python3 if venv doesn't exist.
+  const os = require('os');
+  const venvPython = path.join(os.homedir(), '.garmin-venv', 'bin', 'python3');
+  const fs = require('fs');
+  const pythonBin = fs.existsSync(venvPython) ? venvPython : 'python3';
+
+  const child = execFile(pythonBin, [scriptPath], { env: process.env }, (err, stdout, stderr) => {
     if (err) {
       console.error('Garmin upload process error:', stderr || err.message);
       // Try to parse stdout first — script may have exited non-zero but still printed JSON
