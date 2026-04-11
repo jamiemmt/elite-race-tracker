@@ -2,24 +2,16 @@ services:
   - type: web
     name: elite-race-tracker-web
     env: node
-    buildCommand: npm install && npm run install-client && npm run build
-    startCommand: npm start
+    buildCommand: npm install && npm run install-client && npm run build && pip install garminconnect garth
+    startCommand: node server/garmin-server.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MONGO_URI
-        sync: false
       - key: PORT
         value: 5001
-
-  - type: cron
-    name: elite-race-tracker-scraper
-    env: node
-    schedule: "0 0 * * *"
-    buildCommand: npm install
-    startCommand: node server/scripts/run-scrapers.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MONGO_URI
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GARMIN_EMAIL
+        sync: false
+      - key: GARMIN_PASSWORD
         sync: false
