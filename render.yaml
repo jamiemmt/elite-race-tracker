@@ -5,6 +5,8 @@ services:
     buildCommand: npm install && npm run install-client && npm run build && pip install garminconnect garth
     startCommand: node server/garmin-server.js
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: NODE_ENV
         value: production
       - key: PORT
