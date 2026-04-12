@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Table, Alert, Spinner, Row, Col, Badge, Button } from 'react-bootstrap';
+import { Container, Card, Table, Alert, Spinner, Row, Badge, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaTrophy, FaExclamationTriangle, FaDownload, FaFilter } from 'react-icons/fa';
 import axios from 'axios';
