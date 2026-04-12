@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Container, Card, Row, Col } from 'react-bootstrap';
+import { Table, Container, Card } from 'react-bootstrap';
 import { formatTime } from '../../utils/timeFormatter';
 
 /**

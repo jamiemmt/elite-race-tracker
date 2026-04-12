@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Table, Alert, Spinner, Form, Row, Col, Badge, Button } from 'react-bootstrap';
+import { Container, Card, Table, Alert, Spinner, Row, Col, Badge, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaRunning, FaTrophy, FaExclamationTriangle, FaDownload, FaFilter } from 'react-icons/fa';
+import { FaTrophy, FaExclamationTriangle, FaDownload, FaFilter } from 'react-icons/fa';
 import axios from 'axios';
 
 const FastestTimes = () => {
@@ -17,13 +17,6 @@ const FastestTimes = () => {
   const [availableEvents, setAvailableEvents] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
   
-  // Common race distances
-  const commonDistances = {
-    m: [100, 200, 400, 800, 1500, 3000, 5000, 10000],
-    km: [5, 10, 15, 21.1, 42.2, 50, 100],
-    miles: [1, 3.1, 6.2, 13.1, 26.2, 31, 50, 62, 100]
-  };
-
   useEffect(() => {
     const fetchRaces = async () => {
       try {

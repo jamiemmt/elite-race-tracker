@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
 import { Link, NavLink } from 'react-router-dom';
-import { FaRunning, FaStopwatch, FaUsers, FaTrophy, FaPlus, FaSpider, FaBan, FaDumbbell } from 'react-icons/fa';
+import { FaStopwatch, FaUsers, FaTrophy, FaPlus, FaSpider, FaBan, FaDumbbell } from 'react-icons/fa';
 
 const Header = () => {
   return (

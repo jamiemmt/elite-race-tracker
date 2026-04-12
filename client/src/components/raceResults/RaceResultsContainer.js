@@ -18,7 +18,6 @@ const RaceResultsContainer = () => {
   const defaultView = queryParams.get('view') || 'clean';
   
   const [viewType, setViewType] = useState(defaultView);
-  const [race, setRace] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -26,8 +25,7 @@ const RaceResultsContainer = () => {
     const fetchRace = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/races/${raceId}`);
-        setRace(response.data);
+        await axios.get(`/api/races/${raceId}`);
       } catch (err) {
         console.error('Error fetching race:', err);
         setError('Failed to load race details');
