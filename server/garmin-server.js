@@ -8,6 +8,7 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const app  = express();
@@ -22,12 +23,12 @@ app.use('/api/garmin', require('./routes/garmin'));
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-// Serve React production build
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  app.get('*', (_req, res) =>
-    res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'))
-  );
+// Serve React production build (whenever the build folder exists)
+const buildDir  = path.join(__dirname, '../client/build');
+const indexHtml = path.join(buildDir, 'index.html');
+if (fs.existsSync(indexHtml)) {
+  app.use(express.static(buildDir));
+  app.get('*', (_req, res) => res.sendFile(indexHtml));
 }
 
 app.listen(PORT, () => console.log(`Garmin server running on http://localhost:${PORT}`));
