@@ -256,4 +256,89 @@ router.post('/upload', (req, res) => {
   child.stdin.end();
 });
 
+// ─── GET /api/garmin/push-now ────────────────────────────────────────────────
+// One-tap endpoint: builds and uploads the hardcoded track workout directly.
+
+router.get('/push-now', (req, res) => {
+  if (!process.env.GARMIN_EMAIL || !process.env.GARMIN_PASSWORD) {
+    return res.status(500).send('GARMIN_EMAIL / GARMIN_PASSWORD not set on server.');
+  }
+
+  const SPORT = { sportTypeId: 1, sportTypeKey: 'running' };
+  const STEP  = {
+    warmup:   { stepTypeId: 1, stepTypeKey: 'warmup' },
+    cooldown: { stepTypeId: 2, stepTypeKey: 'cooldown' },
+    interval: { stepTypeId: 3, stepTypeKey: 'interval' },
+    recovery: { stepTypeId: 4, stepTypeKey: 'recovery' },
+    rest:     { stepTypeId: 5, stepTypeKey: 'rest' },
+    repeat:   { stepTypeId: 6, stepTypeKey: 'repeat' },
+  };
+  const DUR = {
+    time:     { durationTypeId: 1, durationTypeKey: 'time' },
+    distance: { durationTypeId: 2, durationTypeKey: 'distance' },
+    lap:      { durationTypeId: 3, durationTypeKey: 'lap.button' },
+  };
+  const NO_TGT     = { workoutTargetTypeId: 1, workoutTargetTypeKey: 'no.target' };
+  const PACE_ZONE  = { workoutTargetTypeId: 6, workoutTargetTypeKey: 'pace.zone' };
+
+  let o = 1;
+  const s = (type, dur, val, tgt, v1 = null, v2 = null) => ({
+    stepOrder: o++, stepType: STEP[type],
+    durationType: dur, durationValue: val,
+    targetType: tgt, targetValueOne: v1, targetValueTwo: v2,
+  });
+
+  const rpt = (count, children) => {
+    const blk = o++; const cid = o;
+    return { stepOrder: blk, stepType: STEP.repeat, numberOfIterations: count,
+             childStepId: cid, workoutSteps: children,
+             durationType: DUR.lap, durationValue: null,
+             targetType: NO_TGT, targetValueOne: null, targetValueTwo: null };
+  };
+
+  const garminWorkout = {
+    workoutName: '7×1000m + 4×500m Track',
+    description: 'Warm-up · 7×1000m @marathon / 1:15 rec · 3 min rest · 4×500m @10K / 1:30 rec · cool-down',
+    sportType: SPORT,
+    workoutSegments: [{ segmentOrder: 1, sportType: SPORT, workoutSteps: [
+      s('warmup',   DUR.lap,      null, NO_TGT),
+      rpt(7, [
+        s('interval', DUR.distance, 1000, PACE_ZONE, 3.9, 3.3),
+        s('recovery', DUR.time,       75, NO_TGT),
+      ]),
+      s('rest',     DUR.time,  180, NO_TGT),
+      rpt(4, [
+        s('interval', DUR.distance, 500, PACE_ZONE, 4.6, 3.9),
+        s('recovery', DUR.time,      90, NO_TGT),
+      ]),
+      s('cooldown', DUR.time,  720, NO_TGT),
+    ]}],
+  };
+
+  const scriptPath = path.join(__dirname, '../garmin/upload_workout.py');
+  const os = require('os');
+  const fs = require('fs');
+  const venvPython = path.join(os.homedir(), '.garmin-venv', 'bin', 'python3');
+  const pythonBin  = fs.existsSync(venvPython) ? venvPython : 'python3';
+
+  res.setHeader('Content-Type', 'text/plain');
+  res.write(`Uploading "${garminWorkout.workoutName}" to Garmin Connect…\n`);
+
+  const child = execFile(pythonBin, [scriptPath], { env: process.env }, (err, stdout, stderr) => {
+    if (err) {
+      try { const r = JSON.parse(stdout); res.end(`ERROR: ${r.error || stderr || err.message}`); }
+      catch { res.end(`ERROR: ${stderr || err.message}`); }
+      return;
+    }
+    try {
+      const r = JSON.parse(stdout);
+      if (r.success) res.end(`\nDone! Workout "${garminWorkout.workoutName}" sent to Garmin (id: ${r.workoutId}).\nSync your watch → Training › Workouts.`);
+      else           res.end(`ERROR: ${r.error}`);
+    } catch { res.end(`ERROR: unexpected output: ${stdout}`); }
+  });
+
+  child.stdin.write(JSON.stringify(garminWorkout));
+  child.stdin.end();
+});
+
 module.exports = router;
