@@ -51,6 +51,15 @@ function buildTarget(target) {
   };
 }
 
+// Parse duration values: accepts seconds number OR "m:ss" / "mm:ss" strings.
+function parseDurationSeconds(val) {
+  if (typeof val === 'string' && /^\d+:\d{2}$/.test(val.trim())) {
+    const [m, s] = val.trim().split(':').map(Number);
+    return m * 60 + s;
+  }
+  return Number(val) || 0;
+}
+
 function convertSteps(steps, counter) {
   const result = [];
   for (const step of steps) {
@@ -75,11 +84,12 @@ function convertSteps(steps, counter) {
       const unit = dur.unit || 'seconds';
       const durType = DURATION_TYPES[unit] || DURATION_TYPES.seconds;
       const { targetType, targetValueOne, targetValueTwo } = buildTarget(step.target);
+      const durationValue = unit === 'lap_button' ? null : parseDurationSeconds(dur.value);
       result.push({
         stepOrder: counter.value++,
         stepType: STEP_TYPES[step.type] || STEP_TYPES.other,
         durationType: durType,
-        durationValue: unit === 'lap_button' ? null : (dur.value || null),
+        durationValue,
         targetType,
         targetValueOne,
         targetValueTwo,
@@ -124,8 +134,8 @@ Pace zone guide:
 Unit conversions:
 - miles → meters: multiply by 1609
 - km → meters: multiply by 1000
-- minutes → seconds: multiply by 60
-- mm:ss format → seconds: (minutes × 60) + seconds. Examples: 2:30 = 150s, 1:15 = 75s, 3:00 = 180s, 4:30 = 270s
+- Simple minutes (e.g. "10 min") → seconds: multiply by 60
+- Time in mm:ss format (e.g. "2:30", "1:15"): output the value as the string "2:30" or "1:15" exactly — do NOT convert to seconds
 
 For repeat blocks (e.g. "4x800m"), use type "repeat" with "count" and nested "steps" array.
 For steps with no intensity cue, use no_target.
