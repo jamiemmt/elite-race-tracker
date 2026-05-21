@@ -42,7 +42,7 @@ def main():
         # Try to reuse cached tokens; only do a full SSO login if needed
         try:
             garth.resume(TOKEN_DIR)
-        except FileNotFoundError:
+        except Exception:
             garth.login(email, password)
             garth.save(TOKEN_DIR)
 
@@ -56,7 +56,9 @@ def main():
 
     except Exception as e:
         msg = str(e)
-        if "401" in msg or "credentials" in msg.lower() or "password" in msg.lower():
+        if "429" in msg:
+            msg = "Garmin is rate-limiting login attempts. Please wait 15–30 minutes and try again."
+        elif "401" in msg or "credentials" in msg.lower() or "password" in msg.lower():
             msg = "Invalid Garmin credentials — check GARMIN_EMAIL and GARMIN_PASSWORD."
         print(json.dumps({"success": False, "error": msg}))
         sys.exit(1)
