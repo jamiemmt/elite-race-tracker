@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Upload a structured workout JSON to Garmin Connect.
-Reads workout JSON from stdin, posts to Garmin Connect REST API via garth.
+Upload a structured workout JSON to Garmin Connect via garth.
+Reads workout JSON from stdin.
 
 Environment variables required:
     GARMIN_EMAIL     - Garmin Connect email
@@ -28,29 +28,19 @@ def main():
         sys.exit(1)
 
     try:
-        from garminconnect import Garmin
+        import garth
     except ImportError:
-        print(json.dumps({"success": False, "error": "garminconnect not installed"}))
+        print(json.dumps({"success": False, "error": "garth not installed — run: pip install garth"}))
         sys.exit(1)
 
     try:
-        client = Garmin(email, password)
-        client.login()
-
-        # Post workout via garth's HTTP client (works across all recent versions)
-        response = client.garth.post(
-            "connectapi",
+        garth.login(email, password)
+        response = garth.connectapi(
             "/workout-service/workout",
+            method="POST",
             json=workout_data,
-            api=True,
         )
-
-        # response is a dict from garth's JSON parsing
-        if isinstance(response, dict):
-            workout_id = response.get("workoutId")
-        else:
-            workout_id = None
-
+        workout_id = response.get("workoutId") if isinstance(response, dict) else None
         print(json.dumps({"success": True, "workoutId": workout_id}))
 
     except Exception as e:
