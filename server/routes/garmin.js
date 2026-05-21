@@ -83,6 +83,7 @@ function convertSteps(steps, counter) {
         targetType,
         targetValueOne,
         targetValueTwo,
+        description: step.notes || '',
       });
     }
   }
@@ -124,9 +125,12 @@ Unit conversions:
 - miles → meters: multiply by 1609
 - km → meters: multiply by 1000
 - minutes → seconds: multiply by 60
+- mm:ss format → seconds: (minutes × 60) + seconds. Examples: 2:30 = 150s, 1:15 = 75s, 3:00 = 180s, 4:30 = 270s
 
 For repeat blocks (e.g. "4x800m"), use type "repeat" with "count" and nested "steps" array.
 For steps with no intensity cue, use no_target.
+
+For each step, include a "notes" field with the original pace/time/effort info exactly as written by the athlete (e.g. "@40", "@ 85-86", "3:10-12", "marathon effort"). Keep it short and verbatim. Omit notes only if the step has no pace/time target at all.
 
 Output ONLY a JSON object matching this exact schema:
 {
@@ -136,7 +140,8 @@ Output ONLY a JSON object matching this exact schema:
     {
       "type": "warmup|cooldown|interval|recovery|rest|other",
       "duration": { "value": number, "unit": "seconds|meters|lap_button" },
-      "target": { "type": "no_target" }
+      "target": { "type": "no_target" },
+      "notes": "string (optional — original pace/effort notation from description)"
     },
     {
       "type": "repeat",
@@ -145,14 +150,10 @@ Output ONLY a JSON object matching this exact schema:
         {
           "type": "interval|recovery|rest",
           "duration": { "value": number, "unit": "seconds|meters" },
-          "target": { "type": "no_target" } or { "type": "pace_zone", "zone": 1|2|3|4|5 }
+          "target": { "type": "no_target" } or { "type": "pace_zone", "zone": 1|2|3|4|5 },
+          "notes": "string (optional)"
         }
       ]
-    },
-    {
-      "type": "interval|warmup|cooldown|other",
-      "duration": { "value": number, "unit": "seconds|meters" },
-      "target": { "type": "pace_zone", "zone": 1|2|3|4|5 }
     }
   ]
 }`;

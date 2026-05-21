@@ -115,7 +115,12 @@ function StepRow({ step, indent = 0 }) {
         </Badge>
       </td>
       <td className="small">{formatDuration(step.duration)}</td>
-      <td className="small">{formatTarget(step.target)}</td>
+      <td className="small">
+        {formatTarget(step.target)}
+        {step.notes && (
+          <div className="text-muted" style={{ fontSize: 11 }}>{step.notes}</div>
+        )}
+      </td>
     </tr>
   );
 }
