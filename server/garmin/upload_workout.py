@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 """
-Upload a Garmin workout JSON to Garmin Connect.
-
-Usage:
-    echo '<workout_json>' | python3 upload_workout.py
+Upload a structured workout JSON to Garmin Connect.
+Reads workout JSON from stdin, posts to Garmin Connect REST API via garth.
 
 Environment variables required:
-    GARMIN_EMAIL     - Your Garmin Connect email
-    GARMIN_PASSWORD  - Your Garmin Connect password
-
-Install dependency:
-    pip install garminconnect
+    GARMIN_EMAIL     - Garmin Connect email
+    GARMIN_PASSWORD  - Garmin Connect password
 """
 
 import sys
@@ -19,39 +14,50 @@ import os
 
 
 def main():
-    email = os.environ.get("GARMIN_EMAIL")
+    email    = os.environ.get("GARMIN_EMAIL")
     password = os.environ.get("GARMIN_PASSWORD")
 
     if not email or not password:
-        error = {"success": False, "error": "GARMIN_EMAIL and GARMIN_PASSWORD environment variables are required"}
-        print(json.dumps(error))
-        sys.exit(1)
-
-    try:
-        from garminconnect import Garmin
-    except ImportError:
-        error = {"success": False, "error": "garminconnect not installed. Run: pip install garminconnect"}
-        print(json.dumps(error))
+        print(json.dumps({"success": False, "error": "GARMIN_EMAIL and GARMIN_PASSWORD are required"}))
         sys.exit(1)
 
     try:
         workout_data = json.load(sys.stdin)
     except json.JSONDecodeError as e:
-        error = {"success": False, "error": f"Invalid workout JSON: {e}"}
-        print(json.dumps(error))
+        print(json.dumps({"success": False, "error": f"Invalid workout JSON: {e}"}))
+        sys.exit(1)
+
+    try:
+        from garminconnect import Garmin
+    except ImportError:
+        print(json.dumps({"success": False, "error": "garminconnect not installed"}))
         sys.exit(1)
 
     try:
         client = Garmin(email, password)
         client.login()
-        result = client.add_workout(workout_data)
-        workout_id = result.get("workoutId") if isinstance(result, dict) else None
+
+        # Post workout via garth's HTTP client (works across all recent versions)
+        response = client.garth.post(
+            "connectapi",
+            "/workout-service/workout",
+            json=workout_data,
+            api=True,
+        )
+
+        # response is a dict from garth's JSON parsing
+        if isinstance(response, dict):
+            workout_id = response.get("workoutId")
+        else:
+            workout_id = None
+
         print(json.dumps({"success": True, "workoutId": workout_id}))
+
     except Exception as e:
-        error_msg = str(e)
-        if "Invalid credentials" in error_msg or "401" in error_msg:
-            error_msg = "Invalid Garmin credentials. Check GARMIN_EMAIL and GARMIN_PASSWORD."
-        print(json.dumps({"success": False, "error": error_msg}))
+        msg = str(e)
+        if "401" in msg or "credentials" in msg.lower() or "password" in msg.lower():
+            msg = "Invalid Garmin credentials — check GARMIN_EMAIL and GARMIN_PASSWORD."
+        print(json.dumps({"success": False, "error": msg}))
         sys.exit(1)
 
 
