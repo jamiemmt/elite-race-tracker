@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Upload a structured workout JSON to Garmin Connect via garth.
+Caches auth tokens in /tmp/garth-tokens to avoid repeated SSO logins.
 Reads workout JSON from stdin.
 
 Environment variables required:
@@ -11,6 +12,8 @@ Environment variables required:
 import sys
 import json
 import os
+
+TOKEN_DIR = "/tmp/garth-tokens"
 
 
 def main():
@@ -34,7 +37,15 @@ def main():
         sys.exit(1)
 
     try:
-        garth.login(email, password)
+        os.makedirs(TOKEN_DIR, exist_ok=True)
+
+        # Try to reuse cached tokens; only do a full SSO login if needed
+        try:
+            garth.resume(TOKEN_DIR)
+        except FileNotFoundError:
+            garth.login(email, password)
+            garth.save(TOKEN_DIR)
+
         response = garth.connectapi(
             "/workout-service/workout",
             method="POST",
