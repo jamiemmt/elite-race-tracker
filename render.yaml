@@ -11,7 +11,7 @@ services:
         value: production
       - key: PORT
         value: 5001
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
         sync: false
       - key: GARMIN_EMAIL
         sync: false

@@ -166,23 +166,27 @@ router.post('/parse', async (req, res) => {
     return res.status(400).json({ error: 'Workout description is required' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' });
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server' });
   }
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      'https://api.groq.com/openai/v1/chat/completions',
       {
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: description.trim() }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user',   content: description.trim() },
+        ],
+        temperature: 0.1,
+        max_tokens: 2048,
       },
-      { headers: { 'content-type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' } }
     );
 
-    const rawText = response.data.candidates[0].content.parts[0].text.trim();
+    const rawText = response.data.choices[0].message.content.trim();
 
     let parsedWorkout;
     try {
