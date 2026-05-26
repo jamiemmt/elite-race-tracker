@@ -297,10 +297,11 @@ router.get('/push-now', (req, res) => {
   const PACE_ZONE  = { workoutTargetTypeId: 6, workoutTargetTypeKey: 'pace.zone' };
 
   let o = 1;
-  const s = (type, dur, val, tgt, v1 = null, v2 = null) => ({
+  const s = (type, dur, val, tgt, v1 = null, v2 = null, notes = '') => ({
     stepOrder: o++, stepType: STEP[type],
     durationType: dur, durationValue: val,
     targetType: tgt, targetValueOne: v1, targetValueTwo: v2,
+    description: notes,
   });
 
   const rpt = (count, children) => {
@@ -312,21 +313,22 @@ router.get('/push-now', (req, res) => {
   };
 
   const garminWorkout = {
-    workoutName: '7×1000m + 4×500m Track',
-    description: 'Warm-up · 7×1000m @marathon / 1:15 rec · 3 min rest · 4×500m @10K / 1:30 rec · cool-down',
+    workoutName: '4×1000 + 400/300/200 Track',
+    description: 'Warm-up · 4×1000 @6:10-15 / 1:15 rec · 3 min rest · 400 @84-85 · 300 @1:04-5 · 200 @42 · cool-down',
     sportType: SPORT,
     workoutSegments: [{ segmentOrder: 1, sportType: SPORT, workoutSteps: [
-      s('warmup',   DUR.lap,      null, NO_TGT),
-      rpt(7, [
-        s('interval', DUR.distance, 1000, PACE_ZONE, 3.9, 3.3),
+      s('warmup',   DUR.lap,  null, NO_TGT),
+      rpt(4, [
+        s('interval', DUR.distance, 1000, PACE_ZONE, 4.32, 4.27, '@ 6:10-6:15 pace'),
         s('recovery', DUR.time,       75, NO_TGT),
       ]),
       s('rest',     DUR.time,  180, NO_TGT),
-      rpt(4, [
-        s('interval', DUR.distance, 500, PACE_ZONE, 4.6, 3.9),
-        s('recovery', DUR.time,      90, NO_TGT),
-      ]),
-      s('cooldown', DUR.time,  720, NO_TGT),
+      s('interval', DUR.distance, 400, PACE_ZONE, 4.8, 4.7, '@ 84-85'),
+      s('recovery', DUR.distance, 400, NO_TGT),
+      s('interval', DUR.distance, 300, PACE_ZONE, 4.8, 4.7, '@ 1:04-1:05'),
+      s('recovery', DUR.distance, 400, NO_TGT),
+      s('interval', DUR.distance, 200, PACE_ZONE, 4.9, 4.8, '@ 42'),
+      s('cooldown', DUR.time,  900, NO_TGT),
     ]}],
   };
 
