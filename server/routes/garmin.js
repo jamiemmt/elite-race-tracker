@@ -242,10 +242,11 @@ router.post('/upload', (req, res) => {
   const fs = require('fs');
   const pythonBin = fs.existsSync(venvPython) ? venvPython : 'python3';
 
-  const child = execFile(pythonBin, [scriptPath], { env: process.env }, (err, stdout, stderr) => {
+  const child = execFile(pythonBin, [scriptPath], { env: process.env, timeout: 45000 }, (err, stdout, stderr) => {
+    console.log('Python stdout:', stdout);
+    console.log('Python stderr:', stderr);
     if (err) {
-      console.error('Garmin upload process error:', stderr || err.message);
-      // Try to parse stdout first — script may have exited non-zero but still printed JSON
+      console.error('Garmin upload process error:', err.message);
       try {
         const result = JSON.parse(stdout);
         return res.status(500).json({ error: result.error || 'Upload failed' });
@@ -262,11 +263,10 @@ router.post('/upload', (req, res) => {
       return res.json({ success: true, workoutId: result.workoutId, workoutName: garminWorkout.workoutName });
     } catch (parseErr) {
       console.error('Failed to parse Python script output:', stdout);
-      return res.status(500).json({ error: 'Unexpected response from upload script' });
+      return res.status(500).json({ error: `Script output: ${stdout || '(empty)'} | stderr: ${stderr || '(empty)'}` });
     }
   });
 
-  // Write workout JSON to the Python script's stdin
   child.stdin.write(workoutJson);
   child.stdin.end();
 });
