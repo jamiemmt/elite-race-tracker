@@ -313,22 +313,21 @@ router.get('/push-now', (req, res) => {
   };
 
   const garminWorkout = {
-    workoutName: '4×1000 + 400/300/200 Track',
-    description: 'Warm-up · 4×1000 @6:10-15 / 1:15 rec · 3 min rest · 400 @84-85 · 300 @1:04-5 · 200 @42 · cool-down',
+    workoutName: '5×3min HM + 4×90s 10K',
+    description: 'Warm-up · 5×3:00 @HM effort / 2:00 jog · 3:00 jog · 4×90s @10K effort / 90s jog · cool-down',
     sportType: SPORT,
     workoutSegments: [{ segmentOrder: 1, sportType: SPORT, workoutSteps: [
       s('warmup',   DUR.lap,  null, NO_TGT),
-      rpt(4, [
-        s('interval', DUR.distance, 1000, PACE_ZONE, 4.32, 4.27, '@ 6:10-6:15 pace'),
-        s('recovery', DUR.time,       75, NO_TGT),
+      rpt(5, [
+        s('interval', DUR.time, 180, PACE_ZONE, 3.9, 3.3, '@ half marathon effort'),
+        s('recovery', DUR.time, 120, NO_TGT),
       ]),
       s('rest',     DUR.time,  180, NO_TGT),
-      s('interval', DUR.distance, 400, PACE_ZONE, 4.8, 4.7, '@ 84-85'),
-      s('recovery', DUR.distance, 400, NO_TGT),
-      s('interval', DUR.distance, 300, PACE_ZONE, 4.8, 4.7, '@ 1:04-1:05'),
-      s('recovery', DUR.distance, 400, NO_TGT),
-      s('interval', DUR.distance, 200, PACE_ZONE, 4.9, 4.8, '@ 42'),
-      s('cooldown', DUR.time,  900, NO_TGT),
+      rpt(4, [
+        s('interval', DUR.time,  90, PACE_ZONE, 4.6, 3.9, '@ 10K effort'),
+        s('recovery', DUR.time,  90, NO_TGT),
+      ]),
+      s('cooldown', DUR.time,  750, NO_TGT),
     ]}],
   };
 
